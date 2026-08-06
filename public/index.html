@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARGUS Pulse — Agency Ad Command Center</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #14120f; --sidebar: #191712; --panel: #1c1a16; --panel-2: #232019;
+    --line: #322e26; --amber: #e8a13c; --amber-dim: #8a6224;
+    --green: #6fcf97; --red: #e57373; --text: #f0ede6; --text-dim: #928c7e;
+    --display: 'Sora', sans-serif; --mono: 'IBM Plex Mono', monospace; --body: 'Inter', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: var(--body); }
+  .app { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar { width: 260px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; }
+  .sidebar-head { padding: 22px 20px 18px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .brand { font-family: var(--display); font-weight: 800; font-size: 18px; letter-spacing: -0.01em; }
+  .brand span { color: var(--amber); }
+  .brand-sub { font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.04em; }
+  .client-nav { flex: 1; overflow-y: auto; padding: 10px; }
+  .client-nav-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.08em; padding: 8px 10px 6px; text-transform: uppercase; }
+  .client-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-radius: 7px; cursor: pointer; margin-bottom: 2px; font-size: 13.5px; font-weight: 500; }
+  .client-item:hover { background: var(--panel-2); }
+  .client-item.active { background: var(--panel-2); color: var(--amber); }
+  .client-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 9px; flex-shrink: 0; display: inline-block; }
+  .client-item .dot.paused { background: var(--text-dim); }
+  .ci-left { display: flex; align-items: center; overflow: hidden; }
+  .ci-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ci-count { font-family: var(--mono); font-size: 10px; color: var(--text-dim); flex-shrink: 0; }
+  .sidebar-foot { padding: 14px; border-top: 1px solid var(--line); }
+  .add-client-btn { width: 100%; background: var(--amber); color: #1c1500; border: none; font-family: var(--body); font-weight: 600; font-size: 13px; padding: 10px; border-radius: 7px; cursor: pointer; }
+  .add-client-btn:hover { background: #f0b458; }
+
+  /* Main */
+  .main { flex: 1; min-width: 0; padding: 28px 36px 60px; }
+
+  /* Portfolio landing */
+  .portfolio-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 22px; }
+  .portfolio-title { font-family: var(--display); font-size: 24px; font-weight: 700; }
+  .portfolio-sub { font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); margin-top: 5px; }
+  .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+  .portfolio-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; cursor: pointer; transition: border-color 0.15s; }
+  .portfolio-card:hover { border-color: var(--amber-dim); }
+  .pc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .pc-name { font-family: var(--display); font-weight: 600; font-size: 15px; }
+  .mode-badge { font-family: var(--mono); font-size: 9px; letter-spacing: 0.05em; padding: 3px 7px; border-radius: 4px; text-transform: uppercase; }
+  .mode-badge.live { background: rgba(111,207,151,0.12); color: var(--green); border: 1px solid rgba(111,207,151,0.3); }
+  .mode-badge.demo { background: rgba(146,140,126,0.12); color: var(--text-dim); border: 1px solid var(--line); }
+  .pc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pc-stat-label { font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); text-transform: uppercase; }
+  .pc-stat-val { font-family: var(--display); font-size: 16px; font-weight: 700; margin-top: 3px; }
+
+  /* Detail view */
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 18px; }
+  .back-link { font-family: var(--mono); font-size: 11px; color: var(--text-dim); cursor: pointer; margin-bottom: 10px; display: inline-block; }
+  .back-link:hover { color: var(--amber); }
+  .client-title-row { display: flex; align-items: center; gap: 10px; }
+  .client-title { font-family: var(--display); font-size: 24px; font-weight: 700; }
+  .client-title-meta { font-family: var(--mono); font-size: 11.5px; color: var(--text-dim); margin-top: 5px; }
+  .top-actions { display: flex; gap: 8px; align-items: center; }
+  .sync-btn, .manage-btn { font-family: var(--mono); font-size: 11.5px; background: transparent; border: 1px solid var(--line); color: var(--text-dim); padding: 8px 14px; border-radius: 6px; cursor: pointer; }
+  .sync-btn:hover, .manage-btn:hover { border-color: var(--amber); color: var(--amber); }
+
+  .range-row { display: flex; gap: 6px; margin-bottom: 20px; }
+  .range-btn { font-family: var(--mono); font-size: 11.5px; background: var(--panel); border: 1px solid var(--line); color: var(--text-dim); padding: 6px 14px; border-radius: 6px; cursor: pointer; }
+  .range-btn.active { border-color: var(--amber); color: var(--amber); }
+
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 22px; }
+  .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+  .kpi-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+  .kpi-value-row { display: flex; align-items: baseline; gap: 8px; }
+  .kpi-value { font-family: var(--display); font-size: 21px; font-weight: 700; }
+  .kpi-delta { font-family: var(--mono); font-size: 11px; }
+  .kpi-delta.up { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
+
+  .accounts-strip { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 22px; }
+  .account-pill { font-family: var(--mono); font-size: 11px; color: var(--text-dim); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 6px 13px; display: flex; align-items: center; gap: 7px; }
+  .account-pill .plat { color: var(--amber); text-transform: uppercase; }
+  .account-pill .never { color: var(--red); }
+
+  .panel-block { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 20px; margin-bottom: 20px; }
+  .panel-title { font-family: var(--display); font-size: 13px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 16px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 10px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
+  th:hover { color: var(--amber); }
+  td { padding: 11px 10px; font-size: 13px; border-bottom: 1px solid var(--line); }
+  tr:last-child td { border-bottom: none; }
+  .platform-badge { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; background: var(--panel-2); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; color: var(--text-dim); }
+  .status-badge { font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; border-radius: 4px; padding: 2px 6px; }
+  .status-badge.active { background: rgba(111,207,151,0.12); color: var(--green); }
+  .status-badge.paused { background: rgba(146,140,126,0.15); color: var(--text-dim); }
+  .num-cell { font-family: var(--mono); text-align: right; }
+  .campaign-name-cell { font-weight: 500; }
+
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
+  .empty-state .big { font-family: var(--display); font-size: 18px; color: var(--text); margin-bottom: 8px; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 10; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 24px; width: 360px; }
+  .modal h3 { font-family: var(--display); font-size: 16px; margin-bottom: 16px; }
+  .modal-hint { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); margin: -6px 0 12px; line-height: 1.5; }
+  .modal input, .modal textarea, .modal select { width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); padding: 10px 12px; border-radius: 6px; font-family: var(--body); font-size: 13px; margin-bottom: 10px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .modal-actions button { font-family: var(--body); font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; }
+  .btn-cancel { background: transparent; color: var(--text-dim); }
+  .btn-save { background: var(--amber); color: #1c1500; }
+
+  canvas { max-height: 230px; }
+  .syncing-overlay { text-align: center; padding: 60px; font-family: var(--mono); color: var(--amber); font-size: 12px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-head" onclick="showPortfolio()">
+      <div class="brand">ARGUS <span>PULSE</span></div>
+      <div class="brand-sub">AD PERFORMANCE COMMAND CENTER</div>
+    </div>
+    <div class="client-nav">
+      <div class="client-nav-label">Clients</div>
+      <div id="client-nav-list"></div>
+    </div>
+    <div class="sidebar-foot">
+      <button class="add-client-btn" onclick="openClientModal()">+ Add Client</button>
+    </div>
+  </div>
+
+  <div class="main" id="main-content"></div>
+</div>
+
+<div class="modal-overlay" id="client-modal-overlay">
+  <div class="modal">
+    <h3>Add Client</h3>
+    <input type="text" id="new-client-name" placeholder="Client / brand name">
+    <textarea id="new-client-notes" placeholder="Notes (contact, retainer, next action…)" rows="3"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeClientModal()">Cancel</button>
+      <button class="btn-save" onclick="saveClient()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="account-modal-overlay">
+  <div class="modal">
+    <h3>Add Ad Account</h3>
+    <select id="new-account-platform">
+      <option value="meta">Meta (Facebook/Instagram)</option>
+      <option value="google">Google Ads</option>
+      <option value="tiktok">TikTok Ads</option>
+    </select>
+    <input type="text" id="new-account-id" placeholder="Account ID (leave blank for demo data)">
+    <input type="text" id="new-account-label" placeholder="Label e.g. Main account">
+    <input type="text" id="new-account-token" placeholder="Access token (optional — real data)">
+    <div class="modal-hint">Leave Account ID + Token empty → demo data. Fill both → pulls real numbers.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAccountModal()">Cancel</button>
+      <button class="btn-save" onclick="saveAccount()">Add</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let clients = [];
+  let activeClientId = null;
+  let chartInstance = null;
+  let sortKey = 'spend';
+  let sortDir = -1;
+  let currentRange = 30;
+
+  function fmtMoney(n) { return '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+  function fmtNum(n) { return Number(n).toLocaleString('en-IN', { maximumFractionDigits: 0 }); }
+  function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+  function timeAgo(iso) {
+    if (!iso) return 'never synced';
+    const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+    if (mins < 1) return 'synced just now';
+    if (mins < 60) return `synced ${mins}m ago`;
+    if (mins < 1440) return `synced ${Math.round(mins / 60)}h ago`;
+    return `synced ${Math.round(mins / 1440)}d ago`;
+  }
+  function deltaHtml(pct) {
+    if (pct === null || pct === undefined || !isFinite(pct)) return '';
+    const dir = pct >= 0 ? 'up' : 'down';
+    const arrow = pct >= 0 ? '▲' : '▼';
+    return `<span class="kpi-delta ${dir}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
+  }
+
+  async function loadClients() {
+    clients = await (await fetch('/api/clients')).json();
+    renderSidebar();
+  }
+
+  function renderSidebar() {
+    const list = document.getElementById('client-nav-list');
+    if (!clients.length) {
+      list.innerHTML = '<div style="padding:10px;font-family:var(--mono);font-size:11.5px;color:var(--text-dim);">No clients yet</div>';
+      return;
+    }
+    list.innerHTML = clients.map(c => `
+      <div class="client-item ${c.id === activeClientId ? 'active' : ''}" onclick="selectClient(${c.id})">
+        <div class="ci-left">
+          <span class="dot ${c.status !== 'active' ? 'paused' : ''}"></span>
+          <span class="ci-name">${escapeHtml(c.name)}</span>
+        </div>
+        <span class="ci-count">${c.ad_accounts.length}</span>
+      </div>
+    `).join('');
+  }
+
+  // ---------- Portfolio landing ----------
+  async function showPortfolio() {
+    activeClientId = null;
+    renderSidebar();
+    const main = document.getElementById('main-content');
+    main.innerHTML = `<div class="syncing-overlay">LOADING PORTFOLIO…</div>`;
+    const portfolio = await (await fetch(`/api/portfolio?days=${currentRange}`)).json();
+
+    if (!portfolio.length) {
+      main.innerHTML = `<div class="empty-state"><div class="big">No clients yet</div>Add your first client from the sidebar to start tracking ad performance.</div>`;
+      return;
+    }
+
+    main.innerHTML = `
+      <div class="portfolio-head">
+        <div>
+          <div class="portfolio-title">Portfolio</div>
+          <div class="portfolio-sub">${portfolio.length} client${portfolio.length === 1 ? '' : 's'} · last ${currentRange} days</div>
+        </div>
+      </div>
+      <div class="portfolio-grid">
+        ${portfolio.map(c => `
+          <div class="portfolio-card" onclick="selectClient(${c.id})">
+            <div class="pc-top">
+              <div class="pc-name">${escapeHtml(c.name)}</div>
+              <span class="mode-badge ${c.is_live ? 'live' : 'demo'}">${c.is_live ? 'Live' : 'Demo'}</span>
+            </div>
+            <div class="pc-stats">
+              <div><div class="pc-stat-label">Spend</div><div class="pc-stat-val">${fmtMoney(c.totals.spend)}</div></div>
+              <div><div class="pc-stat-label">Clicks</div><div class="pc-stat-val">${fmtNum(c.totals.clicks)}</div></div>
+              <div><div class="pc-stat-label">CTR</div><div class="pc-stat-val">${c.totals.ctr.toFixed(2)}%</div></div>
+              <div><div class="pc-stat-label">Accounts</div><div class="pc-stat-val">${c.account_count}</div></div>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // ---------- Client detail ----------
+  async function selectClient(id) {
+    activeClientId = id;
+    renderSidebar();
+    const main = document.getElementById('main-content');
+    main.innerHTML = `<div class="syncing-overlay">LOADING…</div>`;
+    const client = clients.find(c => c.id === id);
+    const summary = await (await fetch(`/api/clients/${id}/summary?days=${currentRange}`)).json();
+    renderClientDetail(client, summary);
+  }
+
+  function renderClientDetail(client, summary) {
+    const main = document.getElementById('main-content');
+    const t = summary.totals;
+    const d = summary.deltas;
+    const isLive = summary.accounts.some(a => a.connected);
+
+    main.innerHTML = `
+      <span class="back-link" onclick="showPortfolio()">← Portfolio</span>
+      <div class="top-row">
+        <div>
+          <div class="client-title-row">
+            <div class="client-title">${escapeHtml(client.name)}</div>
+            <span class="mode-badge ${isLive ? 'live' : 'demo'}">${isLive ? 'Live' : 'Demo'}</span>
+          </div>
+          <div class="client-title-meta">${client.notes ? escapeHtml(client.notes) : 'No notes yet'}</div>
+        </div>
+        <div class="top-actions">
+          <button class="manage-btn" onclick="openAccountModal(${client.id})">+ Ad Account</button>
+          <button class="sync-btn" onclick="syncAllAccounts(${client.id})">↻ Sync All</button>
+        </div>
+      </div>
+
+      <div class="range-row">
+        ${[7, 14, 30, 90].map(r => `<button class="range-btn ${r === currentRange ? 'active' : ''}" onclick="setRange(${r})">${r}D</button>`).join('')}
+      </div>
+
+      <div class="accounts-strip">
+        ${summary.accounts.length ? summary.accounts.map(a => `
+          <div class="account-pill">
+            <span class="plat">${a.platform}</span>${escapeHtml(a.label)} ·
+            ${a.connected ? '<span style="color:var(--green)">live</span>' : '<span>demo</span>'} ·
+            ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}
+          </div>
+        `).join('') : '<div class="account-pill">No ad accounts connected yet</div>'}
+      </div>
+
+      <div class="kpi-grid">
+        <div class="kpi-card"><div class="kpi-label">Spend</div><div class="kpi-value-row"><div class="kpi-value">${fmtMoney(t.spend)}</div>${deltaHtml(d.spend)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Impressions</div><div class="kpi-value-row"><div class="kpi-value">${fmtNum(t.impressions)}</div>${deltaHtml(d.impressions)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">Clicks</div><div class="kpi-value-row"><div class="kpi-value">${fmtNum(t.clicks)}</div>${deltaHtml(d.clicks)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">CTR</div><div class="kpi-value-row"><div class="kpi-value">${t.ctr.toFixed(2)}%</div>${deltaHtml(d.ctr)}</div></div>
+        <div class="kpi-card"><div class="kpi-label">CPA</div><div class="kpi-value-row"><div class="kpi-value">${t.cpa ? fmtMoney(t.cpa) : '—'}</div>${deltaHtml(d.cpa)}</div></div>
+      </div>
+
+      <div class="panel-block">
+        <div class="panel-title">Spend & Clicks Trend</div>
+        <canvas id="trend-chart"></canvas>
+      </div>
+
+      <div class="panel-block">
+        <div class="panel-title">Campaign Performance</div>
+        <table>
+          <thead>
+            <tr>
+              <th onclick="sortTable('campaign_name')">Campaign</th>
+              <th onclick="sortTable('platform')">Platform</th>
+              <th onclick="sortTable('status')">Status</th>
+              <th class="num-cell" onclick="sortTable('spend')">Spend</th>
+              <th class="num-cell" onclick="sortTable('impressions')">Impr.</th>
+              <th class="num-cell" onclick="sortTable('clicks')">Clicks</th>
+              <th class="num-cell" onclick="sortTable('ctr')">CTR</th>
+              <th class="num-cell" onclick="sortTable('conversions')">Conv.</th>
+              <th class="num-cell" onclick="sortTable('cpa')">CPA</th>
+            </tr>
+          </thead>
+          <tbody id="campaign-tbody"></tbody>
+        </table>
+      </div>
+    `;
+
+    window._currentCampaigns = summary.campaigns;
+    renderCampaignTable();
+    renderTrendChart(summary.timeseries);
+  }
+
+  function setRange(days) {
+    currentRange = days;
+    if (activeClientId) selectClient(activeClientId); else showPortfolio();
+  }
+
+  function sortTable(key) {
+    if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = -1; }
+    renderCampaignTable();
+  }
+
+  function renderCampaignTable() {
+    const rows = [...(window._currentCampaigns || [])].sort((a, b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      if (typeof av === 'string') return sortDir * av.localeCompare(bv);
+      return sortDir * ((av ?? -Infinity) - (bv ?? -Infinity));
+    });
+    const tbody = document.getElementById('campaign-tbody');
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--text-dim);font-family:var(--mono);padding:30px;">No campaign data in this range</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows.map(c => `
+      <tr>
+        <td class="campaign-name-cell">${escapeHtml(c.campaign_name)}</td>
+        <td><span class="platform-badge">${c.platform}</span></td>
+        <td><span class="status-badge ${c.status}">${c.status}</span></td>
+        <td class="num-cell">${fmtMoney(c.spend)}</td>
+        <td class="num-cell">${fmtNum(c.impressions)}</td>
+        <td class="num-cell">${fmtNum(c.clicks)}</td>
+        <td class="num-cell">${c.ctr.toFixed(2)}%</td>
+        <td class="num-cell">${fmtNum(c.conversions)}</td>
+        <td class="num-cell">${c.cpa ? fmtMoney(c.cpa) : '—'}</td>
+      </tr>
+    `).join('');
+  }
+
+  function renderTrendChart(timeseries) {
+    const ctx = document.getElementById('trend-chart');
+    if (chartInstance) chartInstance.destroy();
+    chartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: timeseries.map(t => t.date),
+        datasets: [
+          { label: 'Spend', data: timeseries.map(t => t.spend), borderColor: '#e8a13c', backgroundColor: 'rgba(232,161,60,0.08)', fill: true, tension: 0.3, yAxisID: 'y' },
+          { label: 'Clicks', data: timeseries.map(t => t.clicks), borderColor: '#6fcf97', tension: 0.3, yAxisID: 'y1' },
+        ],
+      },
+      options: {
+        responsive: true,
+        interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { ticks: { color: '#928c7e', maxTicksLimit: 10 }, grid: { color: '#322e26' } },
+          y: { position: 'left', ticks: { color: '#928c7e' }, grid: { color: '#322e26' } },
+          y1: { position: 'right', ticks: { color: '#928c7e' }, grid: { display: false } },
+        },
+        plugins: { legend: { labels: { color: '#f0ede6', font: { family: 'Inter' } } } },
+      },
+    });
+  }
+
+  async function syncAllAccounts(clientId) {
+    const fresh = await (await fetch('/api/clients')).json();
+    const client = fresh.find(c => c.id === clientId);
+    for (const a of client.ad_accounts) {
+      await fetch(`/api/ad-accounts/${a.id}/sync`, { method: 'POST' });
+    }
+    await loadClients();
+    if (activeClientId === clientId) selectClient(clientId);
+  }
+
+  // ---------- Modals ----------
+  function openClientModal() { document.getElementById('client-modal-overlay').classList.add('open'); }
+  function closeClientModal() { document.getElementById('client-modal-overlay').classList.remove('open'); }
+
+  async function saveClient() {
+    const name = document.getElementById('new-client-name').value.trim();
+    const notes = document.getElementById('new-client-notes').value.trim();
+    if (!name) return;
+    const res = await (await fetch('/api/clients', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, notes }),
+    })).json();
+    document.getElementById('new-client-name').value = '';
+    document.getElementById('new-client-notes').value = '';
+    closeClientModal();
+    await loadClients();
+    selectClient(res.id);
+  }
+
+  let accountModalClientId = null;
+  function openAccountModal(clientId) {
+    accountModalClientId = clientId;
+    document.getElementById('account-modal-overlay').classList.add('open');
+  }
+  function closeAccountModal() { document.getElementById('account-modal-overlay').classList.remove('open'); }
+
+  async function saveAccount() {
+    const platform = document.getElementById('new-account-platform').value;
+    const acctId = document.getElementById('new-account-id').value.trim() || `demo_${Date.now()}`;
+    const label = document.getElementById('new-account-label').value.trim() || acctId;
+    const token = document.getElementById('new-account-token').value.trim();
+
+    const res = await (await fetch(`/api/clients/${accountModalClientId}/ad-accounts`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ platform, external_account_id: acctId, label, access_token: token || undefined }),
+    })).json();
+
+    document.getElementById('new-account-id').value = '';
+    document.getElementById('new-account-label').value = '';
+    document.getElementById('new-account-token').value = '';
+    closeAccountModal();
+
+    // Sync the newly created account directly by its own id — fixes the
+    // earlier bug where new accounts relied on a stale client list and
+    // never got synced on first add.
+    await fetch(`/api/ad-accounts/${res.id}/sync`, { method: 'POST' });
+    await loadClients();
+    selectClient(accountModalClientId);
+  }
+
+  loadClients().then(showPortfolio);
+</script>
+</body>
+</html>
