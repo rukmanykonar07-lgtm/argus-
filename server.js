@@ -41,20 +41,24 @@ app.post('/api/ad-accounts/:id/sync', async (req, res) => {
   const account = store.getAdAccount(req.params.id);
   if (!account) return res.status(404).json({ error: 'ad account not found' });
 
+  // Pull 200 days back so the 90-day range still has a full previous-90-day
+  // window to compare against — otherwise "vs previous period" breaks at
+  // the edges of whatever we've stored.
+  const HISTORY_DAYS = 200;
   let rows, mode;
   try {
     if (account.platform === 'meta' && account.access_token) {
       const until = new Date().toISOString().slice(0, 10);
-      const since = new Date(Date.now() - 30 * 86400000).toISOString().slice(0, 10);
+      const since = new Date(Date.now() - HISTORY_DAYS * 86400000).toISOString().slice(0, 10);
       rows = await fetchMetaInsights(account.external_account_id, account.access_token, since, until);
       mode = 'live';
     } else {
-      rows = generateMockMetrics(account.id);
+      rows = generateMockMetrics(account.id, HISTORY_DAYS);
       mode = 'mock';
     }
   } catch (err) {
     console.error('Sync failed, falling back to mock:', err.message);
-    rows = generateMockMetrics(account.id);
+    rows = generateMockMetrics(account.id, HISTORY_DAYS);
     mode = 'mock';
   }
 
@@ -70,16 +74,22 @@ app.get('/api/ad-accounts/:id/metrics', (req, res) => {
   res.json(store.getMetrics(req.params.id));
 });
 
-// Cross-account overview for the whole agency
-app.get('/api/overview', (req, res) => {
-  res.json(store.getOverview());
+function parseRangeQuery(req) {
+  const { days, since, until } = req.query;
+  return since && until ? { since, until } : { days: Number(days) || 30 };
+}
+
+// Combined summary for one client — KPIs, campaign table, timeseries,
+// platform breakdown, merged across every ad account that client has
+app.get('/api/clients/:id/summary', (req, res) => {
+  const summary = store.getClientSummary(req.params.id, parseRangeQuery(req));
+  delete summary._prevCampaigns; // internal use only, not for the frontend payload
+  res.json(summary);
 });
 
-// Combined summary for one client — KPIs, campaign table, trend series,
-// merged across every ad account that client has connected
-app.get('/api/clients/:id/summary', (req, res) => {
-  const days = Number(req.query.days) || 30;
-  res.json(store.getClientSummary(req.params.id, days));
+// Rule-based insights — explains WHY performance moved, not just that it did
+app.get('/api/clients/:id/insights', (req, res) => {
+  res.json(store.generateInsights(req.params.id, parseRangeQuery(req)));
 });
 
 // Portfolio rollup — every client with mini KPIs, for the landing grid
