@@ -170,7 +170,7 @@
 <div class="modal-overlay" id="account-modal-overlay">
   <div class="modal">
     <h3>Add Ad Account</h3>
-    <select id="new-account-platform">
+    <select id="new-account-platform" onchange="toggleGoogleFields()">
       <option value="meta">Meta (Facebook/Instagram)</option>
       <option value="google">Google Ads</option>
       <option value="tiktok">TikTok Ads</option>
@@ -178,7 +178,13 @@
     <input type="text" id="new-account-id" placeholder="Account ID (leave blank for demo data)">
     <input type="text" id="new-account-label" placeholder="Label e.g. Main account">
     <input type="text" id="new-account-token" placeholder="Access token (optional — real data)">
-    <div class="modal-hint">Leave Account ID + Token empty → demo data. Fill both → pulls real numbers.</div>
+    <div id="google-fields" style="display:none;">
+      <input type="text" id="new-account-dev-token" placeholder="Google Ads Developer Token">
+      <input type="text" id="new-account-manager-id" placeholder="Manager (MCC) Customer ID">
+      <div class="modal-hint">Google access tokens expire hourly — you'll need to paste a fresh one before each sync until the refresh-token flow is built.</div>
+    </div>
+    <div class="modal-hint" id="tiktok-hint" style="display:none;">TikTok isn't connected to real data yet — this will always show demo numbers regardless of what you enter.</div>
+    <div class="modal-hint">Leave Account ID + Token empty → demo data. Fill both (+ Google's extra fields) → pulls real numbers.</div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeAccountModal()">Cancel</button>
       <button class="btn-save" onclick="saveAccount()">Add</button>
@@ -307,7 +313,7 @@
     window._insights = insights;
     window._client = client;
     const main = document.getElementById('main-content');
-    const isLive = summary.accounts.some(a => a.connected);
+    const isLive = summary.accounts.some(a => a.last_sync_mode === 'live');
     const platformsPresent = [...new Set(summary.accounts.map(a => a.platform))];
 
     main.innerHTML = `
@@ -333,7 +339,7 @@
       </div>
       <div class="accounts-strip">
         ${summary.accounts.length ? summary.accounts.map(a => `
-          <div class="account-pill">${platDot(a.platform)}${escapeHtml(a.label)} · ${a.connected ? '<span style="color:var(--green)">live</span>' : '<span>demo</span>'} · ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}</div>
+          <div class="account-pill">${platDot(a.platform)}${escapeHtml(a.label)} · ${a.last_sync_mode === 'live' ? '<span style="color:var(--green)">live</span>' : a.last_sync_mode === 'mock' ? '<span>demo</span>' : '<span style="color:var(--text-dim)">unsynced</span>'} · ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}</div>
         `).join('') : '<div class="account-pill">No ad accounts connected yet</div>'}
       </div>
       <div class="kpi-grid" id="kpi-grid"></div>
@@ -559,21 +565,35 @@
   }
 
   let accountModalClientId = null;
-  function openAccountModal(clientId) { accountModalClientId = clientId; document.getElementById('account-modal-overlay').classList.add('open'); }
+  function openAccountModal(clientId) { accountModalClientId = clientId; document.getElementById('account-modal-overlay').classList.add('open'); toggleGoogleFields(); }
   function closeAccountModal() { document.getElementById('account-modal-overlay').classList.remove('open'); }
+  function toggleGoogleFields() {
+    const platform = document.getElementById('new-account-platform').value;
+    document.getElementById('google-fields').style.display = platform === 'google' ? 'block' : 'none';
+    document.getElementById('tiktok-hint').style.display = platform === 'tiktok' ? 'block' : 'none';
+  }
 
   async function saveAccount() {
     const platform = document.getElementById('new-account-platform').value;
     const acctId = document.getElementById('new-account-id').value.trim() || `demo_${Date.now()}`;
     const label = document.getElementById('new-account-label').value.trim() || acctId;
     const token = document.getElementById('new-account-token').value.trim();
+    const devToken = document.getElementById('new-account-dev-token').value.trim();
+    const managerId = document.getElementById('new-account-manager-id').value.trim();
     const res = await (await fetch(`/api/clients/${accountModalClientId}/ad-accounts`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ platform, external_account_id: acctId, label, access_token: token || undefined }),
+      body: JSON.stringify({
+        platform, external_account_id: acctId, label,
+        access_token: token || undefined,
+        developer_token: devToken || undefined,
+        manager_customer_id: managerId || undefined,
+      }),
     })).json();
     document.getElementById('new-account-id').value = '';
     document.getElementById('new-account-label').value = '';
     document.getElementById('new-account-token').value = '';
+    document.getElementById('new-account-dev-token').value = '';
+    document.getElementById('new-account-manager-id').value = '';
     closeAccountModal();
     await fetch(`/api/ad-accounts/${res.id}/sync`, { method: 'POST' });
     await loadClients();

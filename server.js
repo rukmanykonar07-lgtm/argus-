@@ -3,6 +3,7 @@ const express = require('express');
 const path = require('path');
 const store = require('./lib/store');
 const { fetchMetaInsights } = require('./lib/meta');
+const { fetchGoogleAdsInsights } = require('./lib/google');
 const { generateMockMetrics } = require('./lib/mock');
 
 const app = express();
@@ -30,9 +31,9 @@ app.patch('/api/clients/:id', (req, res) => {
 
 // ---------- Ad accounts ----------
 app.post('/api/clients/:clientId/ad-accounts', (req, res) => {
-  const { platform, external_account_id, label, access_token } = req.body;
+  const { platform, external_account_id, label, access_token, developer_token, manager_customer_id } = req.body;
   if (!platform || !external_account_id) return res.status(400).json({ error: 'platform and external_account_id required' });
-  const id = store.addAdAccount(req.params.clientId, { platform, external_account_id, label, access_token });
+  const id = store.addAdAccount(req.params.clientId, { platform, external_account_id, label, access_token, developer_token, manager_customer_id });
   res.json({ id });
 });
 
@@ -52,7 +53,15 @@ app.post('/api/ad-accounts/:id/sync', async (req, res) => {
       const since = new Date(Date.now() - HISTORY_DAYS * 86400000).toISOString().slice(0, 10);
       rows = await fetchMetaInsights(account.external_account_id, account.access_token, since, until);
       mode = 'live';
+    } else if (account.platform === 'google' && account.access_token && account.developer_token) {
+      const until = new Date().toISOString().slice(0, 10);
+      const since = new Date(Date.now() - HISTORY_DAYS * 86400000).toISOString().slice(0, 10);
+      rows = await fetchGoogleAdsInsights(account.external_account_id, account.access_token, account.developer_token, account.manager_customer_id, since, until);
+      mode = 'live';
     } else {
+      // TikTok has no real integration built yet — always mock,
+      // regardless of what's typed into the token field. Not silently
+      // pretending otherwise.
       rows = generateMockMetrics(account.id, HISTORY_DAYS);
       mode = 'mock';
     }
@@ -64,7 +73,7 @@ app.post('/api/ad-accounts/:id/sync', async (req, res) => {
 
   store.clearMetrics(account.id);
   store.insertMetrics(account.id, rows);
-  store.markSynced(account.id);
+  store.markSynced(account.id, mode);
 
   res.json({ ok: true, mode, rowsSynced: rows.length });
 });
