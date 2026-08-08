@@ -88,17 +88,10 @@ function parseRangeQuery(req) {
   return since && until ? { since, until } : { days: Number(days) || 30 };
 }
 
-// Combined summary for one client — KPIs, campaign table, timeseries,
-// platform breakdown, merged across every ad account that client has
+// Combined summary for one client — KPIs, full Campaign -> Ad Set -> Ad
+// tree (each node carrying its own insight), timeseries, platform breakdown
 app.get('/api/clients/:id/summary', (req, res) => {
-  const summary = store.getClientSummary(req.params.id, parseRangeQuery(req));
-  delete summary._prevCampaigns; // internal use only, not for the frontend payload
-  res.json(summary);
-});
-
-// Rule-based insights — explains WHY performance moved, not just that it did
-app.get('/api/clients/:id/insights', (req, res) => {
-  res.json(store.generateInsights(req.params.id, parseRangeQuery(req)));
+  res.json(store.getClientSummary(req.params.id, parseRangeQuery(req)));
 });
 
 // Portfolio rollup — every client with mini KPIs, for the landing grid
