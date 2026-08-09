@@ -42,8 +42,16 @@
   .portfolio-title { font-family: var(--display); font-size: 23px; font-weight: 700; }
   .portfolio-sub { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; }
   .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 13px; }
-  .portfolio-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 17px; cursor: pointer; transition: border-color 0.15s; }
+  .portfolio-card { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 10px; padding: 17px; cursor: pointer; transition: border-color 0.15s; }
   .portfolio-card:hover { border-color: var(--amber-dim); }
+  .portfolio-card.sev-concern { border-left-color: var(--red); }
+  .portfolio-card.sev-good, .portfolio-card.sev-perfect { border-left-color: var(--green); }
+  .portfolio-card.sev-neutral { border-left-color: var(--amber); }
+  .portfolio-section-label { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 10px; }
+  .portfolio-section-label:first-of-type { margin-top: 0; }
+  .pc-status { font-family: var(--mono); font-size: 10.5px; margin-bottom: 12px; }
+  .pc-status.concern { color: var(--red); }
+  .pc-status.perfect { color: var(--green); }
   .pc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 13px; }
   .pc-name { font-family: var(--display); font-weight: 600; font-size: 14.5px; }
   .mode-badge { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.05em; padding: 3px 6px; border-radius: 4px; text-transform: uppercase; }
@@ -94,7 +102,15 @@
   .legend-left { display: flex; align-items: center; gap: 7px; }
   .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
   .legend-val { color: var(--text-dim); }
+  .view-tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 4px; margin-bottom: 18px; width: fit-content; }
+  .vtab { font-family: var(--body); font-weight: 600; font-size: 12.5px; color: var(--text-dim); padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+  .vtab.active { background: var(--panel-2); color: var(--amber); }
+  .view-container { display: none; }
+  .attention-path { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 5px; }
+  .attention-stats { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); }
   .insights-panel { margin-bottom: 20px; }
+  .insights-panel .insight-card { margin-bottom: 8px; }
+
   .insight-card { display: flex; gap: 12px; padding: 14px 16px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); }
   .insight-card.concern { border-left: 3px solid var(--red); }
   .insight-card.good { border-left: 3px solid var(--green); }
@@ -223,6 +239,7 @@
   let currentRange = 30;
   let activePlatformTab = 'all';
   let trendMetricPair = 'spend_revenue';
+  let currentView = 'overview';
   const PLATFORM_COLORS = { meta: '#4f8ef7', google: '#f4b942', tiktok: '#f0507a' };
 
   function fmtMoney(n) {
@@ -299,21 +316,40 @@
       main.innerHTML = `<div class="empty-state"><div class="big">No clients yet</div>Add your first client from the sidebar to start tracking ad performance.</div>`;
       return;
     }
+    // Separate into "needs attention" vs "healthy" for a clear split,
+    // since the backend already sorts by urgency
+    const needsAttention = portfolio.filter(c => c.brandInsight.severity === 'concern' || c.concernCount > 0);
+    const healthy = portfolio.filter(c => !(c.brandInsight.severity === 'concern' || c.concernCount > 0));
+
+    function portfolioCard(c) {
+      const sev = c.brandInsight.severity;
+      const statusLine = c.concernCount > 0
+        ? `<div class="pc-status concern">⚠ ${c.concernCount} item${c.concernCount === 1 ? '' : 's'} need${c.concernCount === 1 ? 's' : ''} attention</div>`
+        : `<div class="pc-status perfect">✓ Everything running clean</div>`;
+      return `
+        <div class="portfolio-card sev-${sev}" onclick="selectClient(${c.id})">
+          <div class="pc-top"><div class="pc-name">${escapeHtml(c.name)}</div><span class="mode-badge ${c.is_live ? 'live' : 'demo'}">${c.is_live ? 'Live' : 'Demo'}</span></div>
+          ${statusLine}
+          <div class="pc-stats">
+            <div><div class="pc-stat-label">Spend</div><div class="pc-stat-val">${fmtMoney(c.totals.spend)}</div></div>
+            <div><div class="pc-stat-label">ROAS</div><div class="pc-stat-val">${c.totals.roas ? c.totals.roas.toFixed(1) + 'x' : '—'}</div></div>
+            <div><div class="pc-stat-label">Clicks</div><div class="pc-stat-val">${fmtNum(c.totals.clicks)}</div></div>
+            <div><div class="pc-stat-label">Accounts</div><div class="pc-stat-val">${c.account_count}</div></div>
+          </div>
+        </div>
+      `;
+    }
+
     main.innerHTML = `
       <div class="portfolio-head"><div><div class="portfolio-title">Portfolio</div><div class="portfolio-sub">${portfolio.length} client${portfolio.length === 1 ? '' : 's'} · last ${currentRange} days</div></div></div>
-      <div class="portfolio-grid">
-        ${portfolio.map(c => `
-          <div class="portfolio-card" onclick="selectClient(${c.id})">
-            <div class="pc-top"><div class="pc-name">${escapeHtml(c.name)}</div><span class="mode-badge ${c.is_live ? 'live' : 'demo'}">${c.is_live ? 'Live' : 'Demo'}</span></div>
-            <div class="pc-stats">
-              <div><div class="pc-stat-label">Spend</div><div class="pc-stat-val">${fmtMoney(c.totals.spend)}</div></div>
-              <div><div class="pc-stat-label">ROAS</div><div class="pc-stat-val">${c.totals.roas ? c.totals.roas.toFixed(1) + 'x' : '—'}</div></div>
-              <div><div class="pc-stat-label">Clicks</div><div class="pc-stat-val">${fmtNum(c.totals.clicks)}</div></div>
-              <div><div class="pc-stat-label">Accounts</div><div class="pc-stat-val">${c.account_count}</div></div>
-            </div>
-          </div>
-        `).join('')}
-      </div>
+      ${needsAttention.length ? `
+        <div class="portfolio-section-label">Needs attention</div>
+        <div class="portfolio-grid">${needsAttention.map(portfolioCard).join('')}</div>
+      ` : ''}
+      ${healthy.length ? `
+        <div class="portfolio-section-label">Running clean</div>
+        <div class="portfolio-grid">${healthy.map(portfolioCard).join('')}</div>
+      ` : ''}
     `;
   }
 
@@ -362,6 +398,35 @@
           <div class="account-pill">${platDot(a.platform)}${escapeHtml(a.label)} · ${a.last_sync_mode === 'live' ? '<span style="color:var(--green)">live</span>' : a.last_sync_mode === 'mock' ? '<span>demo</span>' : '<span style="color:var(--text-dim)">unsynced</span>'} · ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}</div>
         `).join('') : '<div class="account-pill">No ad accounts connected yet</div>'}
       </div>
+      <div class="view-tabs">
+        <div class="vtab ${currentView === 'overview' ? 'active' : ''}" onclick="switchView('overview')">Overview</div>
+        <div class="vtab ${currentView === 'attention' ? 'active' : ''}" onclick="switchView('attention')">Attention Needed${window._attentionCount ? ` (${window._attentionCount})` : ''}</div>
+        <div class="vtab ${currentView === 'breakdown' ? 'active' : ''}" onclick="switchView('breakdown')">Full Breakdown</div>
+      </div>
+
+      <div id="view-overview" class="view-container"></div>
+      <div id="view-attention" class="view-container"></div>
+      <div id="view-breakdown" class="view-container"></div>
+    `;
+
+    renderView(currentView);
+  }
+
+  function renderView(view) {
+    document.querySelectorAll('.vtab').forEach((el, i) => el.classList.toggle('active', ['overview', 'attention', 'breakdown'][i] === view));
+    document.querySelectorAll('.view-container').forEach(el => el.style.display = 'none');
+    document.getElementById(`view-${view}`).style.display = 'block';
+
+    if (view === 'overview') renderOverviewView();
+    else if (view === 'attention') renderAttentionView();
+    else if (view === 'breakdown') renderBreakdownView();
+  }
+
+  function switchView(view) { currentView = view; renderView(view); }
+
+  function renderOverviewView() {
+    const el = document.getElementById('view-overview');
+    el.innerHTML = `
       <div class="kpi-grid" id="kpi-grid"></div>
       <div class="insights-panel">
         <div class="panel-block">
@@ -386,6 +451,80 @@
           <div class="donut-legend" id="donut-legend"></div>
         </div>
       </div>
+    `;
+    renderKpiCards();
+    renderInsightCard(window._summary.brandInsight);
+    renderTrendChart();
+    renderDonutChart();
+  }
+
+  // Walks the whole tree and flattens every concerning/neutral item (across
+  // campaign, ad set, AND ad level) into one sorted triage list — this is
+  // the "understand fast" view: no expanding trees, everything that needs
+  // eyes is right here, worst first.
+  function collectFlatInsights(campaigns) {
+    const SEV_RANK = { concern: 0, neutral: 1 };
+    const attention = [];
+    const wins = [];
+    campaigns.forEach(c => {
+      if (c.insight.severity in SEV_RANK) attention.push({ level: 'Campaign', path: [c.name], node: c });
+      if (c.insight.severity === 'good') wins.push({ level: 'Campaign', path: [c.name], node: c });
+      c.adsets.forEach(as => {
+        if (as.insight.severity in SEV_RANK) attention.push({ level: 'Ad Set', path: [c.name, as.name], node: as });
+        if (as.insight.severity === 'good') wins.push({ level: 'Ad Set', path: [c.name, as.name], node: as });
+        as.ads.forEach(ad => {
+          if (ad.insight.severity in SEV_RANK) attention.push({ level: 'Ad', path: [c.name, as.name, ad.name], node: ad });
+          if (ad.insight.severity === 'good') wins.push({ level: 'Ad', path: [c.name, as.name, ad.name], node: ad });
+        });
+      });
+    });
+    attention.sort((a, b) => SEV_RANK[a.node.insight.severity] - SEV_RANK[b.node.insight.severity] || b.node.spend - a.node.spend);
+    wins.sort((a, b) => b.node.spend - a.node.spend);
+    return { attention, wins };
+  }
+
+  function renderAttentionView() {
+    const { attention, wins } = collectFlatInsights(window._summary.campaigns);
+    window._attentionCount = attention.length;
+    const el = document.getElementById('view-attention');
+
+    function entryCard(item) {
+      const n = item.node;
+      return `
+        <div class="insight-card ${n.insight.severity}">
+          <div class="insight-icon">${SEVERITY_ICON2[n.insight.severity]}</div>
+          <div style="flex:1;">
+            <div class="attention-path">${item.level} · ${item.path.map(escapeHtml).join(' → ')}</div>
+            <div class="insight-title">${escapeHtml(n.insight.title)}</div>
+            <div class="insight-explanation">${escapeHtml(n.insight.explanation)}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+              <div class="insight-confidence">${escapeHtml(n.insight.confidence)}</div>
+              <div class="attention-stats">${fmtMoney(n.spend)} spend · ${n.cpa ? fmtMoney(n.cpa) : '—'} CPA</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    el.innerHTML = `
+      <div class="panel-block">
+        <div class="panel-title-row"><div class="panel-title">Needs Attention (${attention.length})</div></div>
+        ${attention.length ? attention.map(entryCard).join('') : `<div class="no-insights">Nothing needs attention — every campaign, ad set, and ad is running clean.</div>`}
+      </div>
+      ${wins.length ? `
+        <div class="panel-block" style="margin-top:16px;">
+          <div class="panel-title-row"><div class="panel-title">Working Well (${wins.length})</div></div>
+          ${wins.map(entryCard).join('')}
+        </div>
+      ` : ''}
+    `;
+    // Update the tab count badge now that we know it
+    document.querySelectorAll('.vtab')[1].textContent = `Attention Needed${attention.length ? ` (${attention.length})` : ''}`;
+  }
+
+  function renderBreakdownView() {
+    const el = document.getElementById('view-breakdown');
+    el.innerHTML = `
       <div class="panel-block">
         <div class="panel-title-row"><div class="panel-title">Campaign → Ad Set → Ad breakdown</div></div>
         <div class="table-controls">
@@ -399,30 +538,19 @@
         <table>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Status</th>
-              <th class="num-cell">Spend</th>
-              <th class="num-cell">Impr.</th>
-              <th class="num-cell">Clicks</th>
-              <th class="num-cell">CTR</th>
-              <th class="num-cell">Conv.</th>
-              <th class="num-cell">CPA</th>
-              <th class="num-cell">ROAS</th>
-              <th>Why</th>
+              <th>Name</th><th>Status</th><th class="num-cell">Spend</th><th class="num-cell">Impr.</th>
+              <th class="num-cell">Clicks</th><th class="num-cell">CTR</th><th class="num-cell">Conv.</th>
+              <th class="num-cell">CPA</th><th class="num-cell">ROAS</th><th>Why</th>
             </tr>
           </thead>
           <tbody id="campaign-tbody"></tbody>
         </table>
       </div>
     `;
-    renderKpiCards();
-    renderInsightCard(summary.brandInsight);
     renderCampaignTable();
-    renderTrendChart();
-    renderDonutChart();
   }
 
-  function setPlatformTab(p) { activePlatformTab = p; renderCampaignTable(); }
+  function setPlatformTab(p) { activePlatformTab = p; renderView(currentView); }
 
   function renderKpiCards() {
     const t = window._summary.totals;
@@ -528,6 +656,8 @@
   }
 
   function renderCampaignTable() {
+    const tbody = document.getElementById('campaign-tbody');
+    if (!tbody) return; // breakdown view isn't currently mounted — nothing to update
     const search = (document.getElementById('campaign-search')?.value || '').toLowerCase();
     const statusFilter = document.getElementById('status-filter')?.value || 'all';
     let campaigns = [...window._summary.campaigns];
@@ -544,7 +674,6 @@
       });
     }
 
-    const tbody = document.getElementById('campaign-tbody');
     if (!campaigns.length) {
       tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-dim);font-family:var(--mono);padding:30px;">No campaigns match</td></tr>`;
       return;
