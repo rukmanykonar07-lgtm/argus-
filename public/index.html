@@ -9,17 +9,18 @@
 <link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #121110; --sidebar: #17150f; --panel: #1b1914; --panel-2: #221f18;
-    --line: #33301f; --amber: #e8a13c; --amber-dim: #8a6224;
-    --green: #6fcf97; --red: #e57373; --blue: #6fa8dc;
-    --text: #f2efe6; --text-dim: #93897a;
-    --meta: #4f8ef7; --google: #f4b942; --tiktok: #f0507a;
+    --bg: #f5f6fa; --sidebar: #ffffff; --panel: #ffffff; --panel-2: #f6f7fb;
+    --line: #e6e8f0; --amber: #d97706; --amber-dim: #f3d9ae;
+    --green: #16a34a; --red: #dc2626; --blue: #2563eb;
+    --text: #14161f; --text-dim: #6b7280;
+    --meta: #2563eb; --google: #eab308; --tiktok: #e11d48;
+    --shadow: 0 1px 2px rgba(20,22,31,0.04), 0 2px 8px rgba(20,22,31,0.05);
     --display: 'Sora', sans-serif; --mono: 'IBM Plex Mono', monospace; --body: 'Inter', sans-serif;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: var(--body); }
   .app { display: flex; min-height: 100vh; }
-  .sidebar { width: 250px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; }
+  .sidebar { width: 250px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; box-shadow: 1px 0 4px rgba(20,22,31,0.03); }
   .sidebar-head { padding: 20px 18px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
   .brand { font-family: var(--display); font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
   .brand span { color: var(--amber); }
@@ -35,14 +36,14 @@
   .ci-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .ci-count { font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); flex-shrink: 0; }
   .sidebar-foot { padding: 14px; border-top: 1px solid var(--line); }
-  .add-client-btn { width: 100%; background: var(--amber); color: #1c1500; border: none; font-weight: 600; font-size: 13px; padding: 10px; border-radius: 7px; cursor: pointer; }
-  .add-client-btn:hover { background: #f0b458; }
+  .add-client-btn { width: 100%; background: var(--amber); color: #ffffff; border: none; font-weight: 600; font-size: 13px; padding: 10px; border-radius: 7px; cursor: pointer; }
+  .add-client-btn:hover { background: #b45f04; }
   .main { flex: 1; min-width: 0; padding: 26px 34px 60px; }
   .portfolio-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; }
   .portfolio-title { font-family: var(--display); font-size: 23px; font-weight: 700; }
   .portfolio-sub { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; }
   .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 13px; }
-  .portfolio-card { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 10px; padding: 17px; cursor: pointer; transition: border-color 0.15s; }
+  .portfolio-card { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 10px; padding: 17px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; box-shadow: var(--shadow); }
   .portfolio-card:hover { border-color: var(--amber-dim); }
   .portfolio-card.sev-concern { border-left-color: var(--red); }
   .portfolio-card.sev-good, .portfolio-card.sev-perfect { border-left-color: var(--green); }
@@ -81,7 +82,7 @@
   .account-pill .plat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
   .account-pill .never { color: var(--red); }
   .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 20px; }
-  .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; }
+  .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; box-shadow: var(--shadow); }
   .kpi-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
   .kpi-value-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
   .kpi-value { font-family: var(--display); font-size: 18px; font-weight: 700; }
@@ -90,7 +91,7 @@
   .kpi-delta.down { color: var(--red); }
   .sparkline { display: block; }
   .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 20px; }
-  .panel-block { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; }
+  .panel-block { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; box-shadow: var(--shadow); }
   .panel-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
   .panel-title { font-family: var(--display); font-size: 12.5px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
   .chart-toggle { display: flex; gap: 3px; }
@@ -165,14 +166,14 @@
   .empty-state .big { font-family: var(--display); font-size: 17px; color: var(--text); margin-bottom: 8px; }
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 10; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 24px; width: 360px; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 24px; width: 360px; box-shadow: 0 8px 32px rgba(20,22,31,0.16); }
   .modal h3 { font-family: var(--display); font-size: 16px; margin-bottom: 16px; }
   .modal-hint { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); margin: -6px 0 12px; line-height: 1.5; }
   .modal input, .modal textarea, .modal select { width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); padding: 10px 12px; border-radius: 6px; font-family: var(--body); font-size: 13px; margin-bottom: 10px; }
   .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
   .modal-actions button { font-family: var(--body); font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; }
   .btn-cancel { background: transparent; color: var(--text-dim); }
-  .btn-save { background: var(--amber); color: #1c1500; }
+  .btn-save { background: var(--amber); color: #ffffff; }
   .syncing-overlay { text-align: center; padding: 60px; font-family: var(--mono); color: var(--amber); font-size: 12px; }
 </style>
 </head>
@@ -240,7 +241,7 @@
   let activePlatformTab = 'all';
   let trendMetricPair = 'spend_revenue';
   let currentView = 'overview';
-  const PLATFORM_COLORS = { meta: '#4f8ef7', google: '#f4b942', tiktok: '#f0507a' };
+  const PLATFORM_COLORS = { meta: '#2563eb', google: '#eab308', tiktok: '#e11d48' };
 
   function fmtMoney(n) {
     if (n === null || n === undefined) return '—';
@@ -556,7 +557,7 @@
     const t = window._summary.totals;
     const d = window._summary.deltas;
     const ts = window._summary.timeseries;
-    const spark = key => sparklineSvg(ts.map(r => r[key]), '#e8a13c');
+    const spark = key => sparklineSvg(ts.map(r => r[key]), '#d97706');
     const cards = [
       { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
       { label: 'Revenue', val: fmtMoney(t.revenue), delta: d.revenue, key: 'revenue' },
@@ -691,8 +692,8 @@
     const ctx = document.getElementById('trend-chart');
     if (trendChart) trendChart.destroy();
     const pairs = trendMetricPair === 'spend_revenue'
-      ? [{ k: 'spend', label: 'Spend', color: '#e8a13c' }, { k: 'revenue', label: 'Revenue', color: '#6fcf97' }]
-      : [{ k: 'clicks', label: 'Clicks', color: '#6fa8dc' }, { k: 'conversions', label: 'Conversions', color: '#e8a13c' }];
+      ? [{ k: 'spend', label: 'Spend', color: '#d97706' }, { k: 'revenue', label: 'Revenue', color: '#16a34a' }]
+      : [{ k: 'clicks', label: 'Clicks', color: '#2563eb' }, { k: 'conversions', label: 'Conversions', color: '#d97706' }];
     trendChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -705,11 +706,11 @@
       options: {
         responsive: true, interaction: { mode: 'index', intersect: false },
         scales: {
-          x: { ticks: { color: '#93897a', maxTicksLimit: 10 }, grid: { color: '#33301f' } },
-          y: { position: 'left', ticks: { color: '#93897a' }, grid: { color: '#33301f' } },
-          y1: { position: 'right', ticks: { color: '#93897a' }, grid: { display: false } },
+          x: { ticks: { color: '#6b7280', maxTicksLimit: 10 }, grid: { color: '#eef0f5' } },
+          y: { position: 'left', ticks: { color: '#6b7280' }, grid: { color: '#eef0f5' } },
+          y1: { position: 'right', ticks: { color: '#6b7280' }, grid: { display: false } },
         },
-        plugins: { legend: { labels: { color: '#f2efe6', font: { family: 'Inter' } } } },
+        plugins: { legend: { labels: { color: '#14161f', font: { family: 'Inter' } } } },
       },
     });
   }
@@ -727,7 +728,7 @@
     }
     donutChart = new Chart(ctx, {
       type: 'doughnut',
-      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#1b1914', borderWidth: 2 }] },
+      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 2 }] },
       options: { plugins: { legend: { display: false } }, cutout: '68%' },
     });
     const total = values.reduce((a, b) => a + b, 0);
