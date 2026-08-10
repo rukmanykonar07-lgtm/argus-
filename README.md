@@ -91,12 +91,33 @@ honestly falls back to demo data and labels itself "demo," not "live."
 - Client/CRM layer, multi-account-per-client, portfolio landing grid
 - Real Meta + Google Ads integration (Google's caveat noted above)
 - Revenue/ROAS tracking, sparklines, platform donut chart
+- Reach, Frequency, CPM, CPC — pulled from Meta directly (Google's simple
+  ad-level query doesn't include reach; Google's Reach & Frequency API is
+  a separate, more complex integration not wired up)
+- Meta's own Quality/Engagement/Conversion Rate rankings, surfaced at ad
+  level — this is Meta's own diagnostic signal for why an ad underperforms
+  vs competitors for the same audience, not our own inference
 - Date range (7/14/30/90d) with period-over-period % change
 - Search + status + platform filtering on the campaign table
-- Rule-based insights engine explaining performance shifts
+- Rule-based insights engine explaining performance shifts, at every level
+  (brand, campaign, ad set, ad)
 - Historical daily storage so trend charts and comparisons work
 
-**Not built yet — the real remaining gaps:**
+**Honest caveat on Reach:** when pulled per-day (which this does, to keep
+trend charts and range filtering working), summing daily reach across a
+date range slightly overcounts people who saw the ad on more than one day
+— it's not a perfectly deduplicated unique-reach number for the whole
+period, just a reasonable approximation. Frequency (impressions ÷ reach)
+inherits that same approximation.
+
+**Still not tracked — the real remaining gaps:**
+- Video metrics (ThruPlays, average watch time, video view rate)
+- Engagement metrics (post reactions, comments, shares, page likes)
+- Placement breakdown (feed vs. Stories vs. Reels vs. Audience Network)
+- Demographic/geographic breakdown (age, gender, region)
+- Google's reach/frequency (needs the separate Reach Planning API)
+
+**Not built yet — the other remaining gaps:**
 - **TikTok Ads integration** — no fetch function exists at all
 - **Google OAuth refresh-token flow** — currently needs a manually
   re-pasted access token every ~hour for live syncs to keep working

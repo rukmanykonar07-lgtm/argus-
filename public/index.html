@@ -81,7 +81,7 @@
   .account-pill { font-family: var(--mono); font-size: 10px; color: var(--text-dim); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; }
   .account-pill .plat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
   .account-pill .never { color: var(--red); }
-  .kpi-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 20px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
   .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; box-shadow: var(--shadow); }
   .kpi-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
   .kpi-value-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
@@ -565,6 +565,10 @@
       { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
       { label: 'CPA', val: t.cpa ? fmtMoney(t.cpa) : '—', delta: d.cpa, key: 'cpa' },
       { label: 'Conversions', val: fmtNum(t.conversions), delta: null, key: 'conversions' },
+      { label: 'Reach', val: t.reach ? fmtNum(t.reach) : '—', delta: null, key: 'reach' },
+      { label: 'Frequency', val: t.frequency ? t.frequency.toFixed(2) + 'x' : '—', delta: null, key: 'frequency' },
+      { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
+      { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
     ];
     document.getElementById('kpi-grid').innerHTML = cards.map(c => `
       <div class="kpi-card">
@@ -638,10 +642,28 @@
       </tr>
     `);
 
-    if (expandedDetail.has(path) && node.insight.explanation) {
+    if (expandedDetail.has(path)) {
+      const deliveryBits = [];
+      if (node.reach) deliveryBits.push(`Reach: ${fmtNum(node.reach)}`);
+      if (node.frequency) deliveryBits.push(`Frequency: ${node.frequency.toFixed(2)}x`);
+      if (node.cpm) deliveryBits.push(`CPM: ${fmtMoney(node.cpm)}`);
+      if (node.cpc) deliveryBits.push(`CPC: ${fmtMoney(node.cpc)}`);
+      const deliveryLine = deliveryBits.length ? `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">${deliveryBits.join(' · ')}</div>` : '';
+
+      let rankingsLine = '';
+      if (level === 'ad' && node.rankings) {
+        const r = node.rankings;
+        const fmt = v => v ? v.replace(/_/g, ' ') : 'unknown';
+        rankingsLine = `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">Meta's own diagnostics — Quality: <b>${fmt(r.quality)}</b> · Engagement: <b>${fmt(r.engagement)}</b> · Conversion: <b>${fmt(r.conversion)}</b></div>`;
+      }
+
       rows.push(`
         <tr class="insight-detail-row">
-          <td colspan="10">${escapeHtml(node.insight.explanation)}${node.insight.confidence ? `<span class="conf-tag">${escapeHtml(node.insight.confidence)}</span>` : ''}</td>
+          <td colspan="10">
+            ${node.insight.explanation ? `${escapeHtml(node.insight.explanation)}${node.insight.confidence ? `<span class="conf-tag">${escapeHtml(node.insight.confidence)}</span>` : ''}` : 'No specific concern flagged for this period.'}
+            ${deliveryLine}
+            ${rankingsLine}
+          </td>
         </tr>
       `);
     }
