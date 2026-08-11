@@ -82,7 +82,8 @@
   .account-pill .plat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
   .account-pill .never { color: var(--red); }
   .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
-  .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; box-shadow: var(--shadow); }
+  .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+  .kpi-card:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(20,22,31,0.06), 0 4px 12px rgba(20,22,31,0.08); }
   .kpi-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
   .kpi-value-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
   .kpi-value { font-family: var(--display); font-size: 18px; font-weight: 700; }
@@ -274,7 +275,7 @@
     const arrow = pct >= 0 ? '▲' : '▼';
     return `<span class="kpi-delta ${dir}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
   }
-  function sparklineSvg(values, color) {
+  function sparklineSvg(values, color, fmt) {
     if (!values || values.length < 2) return '';
     const w = 100, h = 30, pad = 2;
     const max = Math.max(...values), min = Math.min(...values);
@@ -284,7 +285,9 @@
       const y = h - pad - ((v - min) / range) * (h - pad * 2);
       return `${x.toFixed(1)},${y.toFixed(1)}`;
     }).join(' ');
-    return `<svg class="sparkline" width="100%" height="30" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    const formatter = fmt || (v => Math.round(v).toLocaleString('en-IN'));
+    const tooltip = `Over this period — low: ${formatter(min)}, high: ${formatter(max)}, latest: ${formatter(values[values.length - 1])}`;
+    return `<svg class="sparkline" width="100%" height="30" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><title>${escapeHtml(tooltip)}</title><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
   function platDot(platform) { return `<span class="plat-dot" style="background:${PLATFORM_COLORS[platform] || '#888'}"></span>`; }
 
@@ -427,6 +430,9 @@
 
   function renderOverviewView() {
     const el = document.getElementById('view-overview');
+    const { attention } = collectFlatInsights(window._summary.campaigns);
+    const topIssues = attention.slice(0, 3);
+
     el.innerHTML = `
       <div class="kpi-grid" id="kpi-grid"></div>
       <div class="insights-panel">
@@ -435,6 +441,26 @@
           <div id="brand-insight"></div>
         </div>
       </div>
+      ${topIssues.length ? `
+        <div class="insights-panel">
+          <div class="panel-block">
+            <div class="panel-title-row">
+              <div class="panel-title">Top Issues Right Now</div>
+              <div class="ctoggle-btn" onclick="switchView('attention')">View all ${attention.length} →</div>
+            </div>
+            ${topIssues.map(item => `
+              <div class="insight-card ${item.node.insight.severity}">
+                <div class="insight-icon">${SEVERITY_ICON2[item.node.insight.severity]}</div>
+                <div>
+                  <div class="attention-path">${item.level} · ${item.path.map(escapeHtml).join(' → ')}</div>
+                  <div class="insight-title">${escapeHtml(item.node.insight.title)}</div>
+                  <div class="insight-explanation">${escapeHtml(item.node.insight.explanation)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
       <div class="analytics-grid">
         <div class="panel-block">
           <div class="panel-title-row">
@@ -553,11 +579,31 @@
 
   function setPlatformTab(p) { activePlatformTab = p; renderView(currentView); }
 
+  const METRIC_INFO = {
+    spend: 'Total amount spent on ads in this period.',
+    revenue: 'Total revenue attributed to conversions from these ads.',
+    roas: 'Return on ad spend — revenue ÷ spend. Above 1x means profitable on ad cost alone.',
+    ctr: 'Click-through rate — % of people who saw the ad and clicked it.',
+    cpa: 'Cost per acquisition — average spend per conversion.',
+    conversions: 'Total tracked conversions (purchases, leads, etc.) in this period.',
+    reach: 'Unique people who saw the ad at least once. Currently tracked for Meta only — Google and TikTok don\'t report this the same way yet, so it shows N/A for those.',
+    frequency: 'Average times each person saw the ad (impressions ÷ reach). Rising frequency with falling CTR is a common fatigue signal. Meta only, same reason as Reach.',
+    cpm: 'Cost per 1,000 impressions — how expensive reach is right now.',
+    cpc: 'Cost per click — average amount paid each time someone clicks.',
+  };
+
+  function jumpToBreakdown(metricKey) {
+    sortKey = metricKey;
+    sortDir = -1;
+    switchView('breakdown');
+  }
+
   function renderKpiCards() {
     const t = window._summary.totals;
     const d = window._summary.deltas;
     const ts = window._summary.timeseries;
     const spark = key => sparklineSvg(ts.map(r => r[key]), '#d97706');
+    const isMetaOnly = key => (key === 'reach' || key === 'frequency');
     const cards = [
       { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
       { label: 'Revenue', val: fmtMoney(t.revenue), delta: d.revenue, key: 'revenue' },
@@ -565,14 +611,14 @@
       { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
       { label: 'CPA', val: t.cpa ? fmtMoney(t.cpa) : '—', delta: d.cpa, key: 'cpa' },
       { label: 'Conversions', val: fmtNum(t.conversions), delta: null, key: 'conversions' },
-      { label: 'Reach', val: t.reach ? fmtNum(t.reach) : '—', delta: null, key: 'reach' },
-      { label: 'Frequency', val: t.frequency ? t.frequency.toFixed(2) + 'x' : '—', delta: null, key: 'frequency' },
+      { label: 'Reach', val: t.reach ? fmtNum(t.reach) : 'N/A', delta: null, key: 'reach' },
+      { label: 'Frequency', val: t.frequency ? t.frequency.toFixed(2) + 'x' : 'N/A', delta: null, key: 'frequency' },
       { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
       { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
     ];
     document.getElementById('kpi-grid').innerHTML = cards.map(c => `
-      <div class="kpi-card">
-        <div class="kpi-label">${c.label}</div>
+      <div class="kpi-card" title="${escapeHtml(METRIC_INFO[c.key] || '')}" onclick="jumpToBreakdown('${c.key}')">
+        <div class="kpi-label">${c.label}${isMetaOnly(c.key) ? ' <span style="opacity:0.5;">(Meta)</span>' : ''}</div>
         <div class="kpi-value-row"><div class="kpi-value">${c.val}</div>${deltaHtml(c.delta)}</div>
         ${spark(c.key)}
       </div>
@@ -732,7 +778,18 @@
           y: { position: 'left', ticks: { color: '#6b7280' }, grid: { color: '#eef0f5' } },
           y1: { position: 'right', ticks: { color: '#6b7280' }, grid: { display: false } },
         },
-        plugins: { legend: { labels: { color: '#14161f', font: { family: 'Inter' } } } },
+        plugins: {
+          legend: { labels: { color: '#14161f', font: { family: 'Inter' } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const val = ctx.parsed.y;
+                const formatted = trendMetricPair === 'spend_revenue' ? fmtMoney(val) : fmtNum(val);
+                return `${ctx.dataset.label}: ${formatted}`;
+              },
+            },
+          },
+        },
       },
     });
   }
@@ -751,7 +808,28 @@
     donutChart = new Chart(ctx, {
       type: 'doughnut',
       data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 2 }] },
-      options: { plugins: { legend: { display: false } }, cutout: '68%' },
+      options: {
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const platform = labels[elements[0].index];
+          activePlatformTab = platform;
+          switchView('breakdown');
+        },
+        onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = ((ctx.parsed / total) * 100).toFixed(0);
+                return `${ctx.label}: ${fmtMoney(ctx.parsed)} (${pct}%)`;
+              },
+            },
+          },
+        },
+        cutout: '68%',
+      },
     });
     const total = values.reduce((a, b) => a + b, 0);
     document.getElementById('donut-legend').innerHTML = labels.map((l, i) => `
