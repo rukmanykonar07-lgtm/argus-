@@ -81,7 +81,10 @@
   .account-pill { font-family: var(--mono); font-size: 10px; color: var(--text-dim); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; }
   .account-pill .plat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
   .account-pill .never { color: var(--red); }
-  .kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 20px; }
+  .sis-badge { font-family: var(--mono); font-size: 9px; color: var(--google); background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3); border-radius: 4px; padding: 1px 6px; margin-left: 8px; }
+  .kpi-group { margin-bottom: 16px; }
+  .kpi-group-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
   .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
   .kpi-card:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(20,22,31,0.06), 0 4px 12px rgba(20,22,31,0.08); }
   .kpi-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
@@ -434,7 +437,7 @@
     const topIssues = attention.slice(0, 3);
 
     el.innerHTML = `
-      <div class="kpi-grid" id="kpi-grid"></div>
+      <div id="kpi-groups"></div>
       <div class="insights-panel">
         <div class="panel-block">
           <div class="panel-title-row"><div class="panel-title">Brand Overview — Why performance moved</div></div>
@@ -590,6 +593,10 @@
     frequency: 'Average times each person saw the ad (impressions ÷ reach). Rising frequency with falling CTR is a common fatigue signal. Meta only, same reason as Reach.',
     cpm: 'Cost per 1,000 impressions — how expensive reach is right now.',
     cpc: 'Cost per click — average amount paid each time someone clicks.',
+    engagement: 'Likes, comments, shares, and link clicks combined — Meta\'s own engagement rollup. Meta only.',
+    engagement_rate: 'Engagement as a % of impressions — how often people who saw the ad actually interacted with it. Meta only.',
+    video_views: 'Number of times a video ad was watched. Only non-zero for video creatives. Meta only.',
+    link_clicks: 'Clicks specifically on a link in the ad, a subset of total clicks. Meta only.',
   };
 
   function jumpToBreakdown(metricKey) {
@@ -603,24 +610,47 @@
     const d = window._summary.deltas;
     const ts = window._summary.timeseries;
     const spark = key => sparklineSvg(ts.map(r => r[key]), '#d97706');
-    const isMetaOnly = key => (key === 'reach' || key === 'frequency');
-    const cards = [
-      { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
-      { label: 'Revenue', val: fmtMoney(t.revenue), delta: d.revenue, key: 'revenue' },
-      { label: 'ROAS', val: t.roas ? t.roas.toFixed(2) + 'x' : '—', delta: d.roas, key: 'roas' },
-      { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
-      { label: 'CPA', val: t.cpa ? fmtMoney(t.cpa) : '—', delta: d.cpa, key: 'cpa' },
-      { label: 'Conversions', val: fmtNum(t.conversions), delta: null, key: 'conversions' },
-      { label: 'Reach', val: t.reach ? fmtNum(t.reach) : 'N/A', delta: null, key: 'reach' },
-      { label: 'Frequency', val: t.frequency ? t.frequency.toFixed(2) + 'x' : 'N/A', delta: null, key: 'frequency' },
-      { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
-      { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
+    const metaOnlyKeys = new Set(['reach', 'frequency', 'engagement', 'engagement_rate', 'video_views', 'link_clicks']);
+    const isMetaOnly = key => metaOnlyKeys.has(key);
+
+    // Regrouped from one flat wall of cards into labeled sections so the
+    // eye can jump straight to "did we make money" before drilling into
+    // efficiency or engagement diagnostics.
+    const groups = [
+      { label: 'Outcomes', cards: [
+        { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
+        { label: 'Revenue', val: fmtMoney(t.revenue), delta: d.revenue, key: 'revenue' },
+        { label: 'ROAS', val: t.roas ? t.roas.toFixed(2) + 'x' : '—', delta: d.roas, key: 'roas' },
+        { label: 'CPA', val: t.cpa ? fmtMoney(t.cpa) : '—', delta: d.cpa, key: 'cpa' },
+        { label: 'Conversions', val: fmtNum(t.conversions), delta: null, key: 'conversions' },
+      ]},
+      { label: 'Efficiency & Delivery', cards: [
+        { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
+        { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
+        { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
+        { label: 'Reach', val: t.reach ? fmtNum(t.reach) : 'N/A', delta: null, key: 'reach' },
+        { label: 'Frequency', val: t.frequency ? t.frequency.toFixed(2) + 'x' : 'N/A', delta: null, key: 'frequency' },
+      ]},
+      { label: 'Engagement', cards: [
+        { label: 'Engagements', val: t.engagement ? fmtNum(t.engagement) : 'N/A', delta: null, key: 'engagement' },
+        { label: 'Engagement Rate', val: t.engagement_rate ? t.engagement_rate.toFixed(2) + '%' : 'N/A', delta: null, key: 'engagement_rate' },
+        { label: 'Video Views', val: t.video_views ? fmtNum(t.video_views) : 'N/A', delta: null, key: 'video_views' },
+        { label: 'Link Clicks', val: t.link_clicks ? fmtNum(t.link_clicks) : 'N/A', delta: null, key: 'link_clicks' },
+      ]},
     ];
-    document.getElementById('kpi-grid').innerHTML = cards.map(c => `
-      <div class="kpi-card" title="${escapeHtml(METRIC_INFO[c.key] || '')}" onclick="jumpToBreakdown('${c.key}')">
-        <div class="kpi-label">${c.label}${isMetaOnly(c.key) ? ' <span style="opacity:0.5;">(Meta)</span>' : ''}</div>
-        <div class="kpi-value-row"><div class="kpi-value">${c.val}</div>${deltaHtml(c.delta)}</div>
-        ${spark(c.key)}
+
+    document.getElementById('kpi-groups').innerHTML = groups.map(g => `
+      <div class="kpi-group">
+        <div class="kpi-group-label">${g.label}</div>
+        <div class="kpi-grid">
+          ${g.cards.map(c => `
+            <div class="kpi-card" title="${escapeHtml(METRIC_INFO[c.key] || '')}" onclick="jumpToBreakdown('${c.key}')">
+              <div class="kpi-label">${c.label}${isMetaOnly(c.key) ? ' <span style="opacity:0.5;">(Meta)</span>' : ''}</div>
+              <div class="kpi-value-row"><div class="kpi-value">${c.val}</div>${deltaHtml(c.delta)}</div>
+              ${spark(c.key)}
+            </div>
+          `).join('')}
+        </div>
       </div>
     `).join('');
   }
@@ -674,6 +704,7 @@
             ${hasChildren ? `<span class="tree-toggle ${isOpen ? 'open' : ''}">▶</span>` : '<span class="tree-toggle"></span>'}
             ${level !== 'campaign' ? '' : platDot(node.platform)}
             ${escapeHtml(node.name)}
+            ${level === 'campaign' && node.searchVisibility ? `<span class="sis-badge" title="Search Impression Share — % of eligible searches your ad showed on">IS ${node.searchVisibility.search_impression_share.toFixed(0)}%</span>` : ''}
           </div>
         </td>
         <td><span class="status-badge ${node.status}"><span class="dot"></span>${node.status}</span></td>
@@ -696,6 +727,13 @@
       if (node.cpc) deliveryBits.push(`CPC: ${fmtMoney(node.cpc)}`);
       const deliveryLine = deliveryBits.length ? `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">${deliveryBits.join(' · ')}</div>` : '';
 
+      const engagementBits = [];
+      if (node.engagement) engagementBits.push(`Engagements: ${fmtNum(node.engagement)}`);
+      if (node.engagement_rate) engagementBits.push(`Engagement Rate: ${node.engagement_rate.toFixed(2)}%`);
+      if (node.video_views) engagementBits.push(`Video Views: ${fmtNum(node.video_views)}`);
+      if (node.link_clicks) engagementBits.push(`Link Clicks: ${fmtNum(node.link_clicks)}`);
+      const engagementLine = engagementBits.length ? `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">${engagementBits.join(' · ')}</div>` : '';
+
       let rankingsLine = '';
       if (level === 'ad' && node.rankings) {
         const r = node.rankings;
@@ -703,12 +741,20 @@
         rankingsLine = `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">Meta's own diagnostics — Quality: <b>${fmt(r.quality)}</b> · Engagement: <b>${fmt(r.engagement)}</b> · Conversion: <b>${fmt(r.conversion)}</b></div>`;
       }
 
+      let searchVisLine = '';
+      if (level === 'campaign' && node.searchVisibility) {
+        const sv = node.searchVisibility;
+        searchVisLine = `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">Google Search Impression Share: <b>${sv.search_impression_share.toFixed(1)}%</b> — lost to rank/bid: ${sv.search_rank_lost_impression_share.toFixed(1)}%, lost to budget: ${sv.search_budget_lost_impression_share.toFixed(1)}%</div>`;
+      }
+
       rows.push(`
         <tr class="insight-detail-row">
           <td colspan="10">
             ${node.insight.explanation ? `${escapeHtml(node.insight.explanation)}${node.insight.confidence ? `<span class="conf-tag">${escapeHtml(node.insight.confidence)}</span>` : ''}` : 'No specific concern flagged for this period.'}
             ${deliveryLine}
+            ${engagementLine}
             ${rankingsLine}
+            ${searchVisLine}
           </td>
         </tr>
       `);

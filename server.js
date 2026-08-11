@@ -3,7 +3,7 @@ const express = require('express');
 const path = require('path');
 const store = require('./lib/store');
 const { fetchMetaInsights } = require('./lib/meta');
-const { fetchGoogleAdsInsights } = require('./lib/google');
+const { fetchGoogleAdsInsights, fetchSearchVisibility } = require('./lib/google');
 const { generateMockMetrics } = require('./lib/mock');
 
 const app = express();
@@ -58,6 +58,14 @@ app.post('/api/ad-accounts/:id/sync', async (req, res) => {
       const since = new Date(Date.now() - HISTORY_DAYS * 86400000).toISOString().slice(0, 10);
       rows = await fetchGoogleAdsInsights(account.external_account_id, account.access_token, account.developer_token, account.manager_customer_id, since, until);
       mode = 'live';
+      // Best-effort — Search Impression Share is a nice-to-have diagnostic,
+      // not core sync data, so a failure here must never break the sync
+      try {
+        const visibility = await fetchSearchVisibility(account.external_account_id, account.access_token, account.developer_token, account.manager_customer_id);
+        store.setSearchVisibility(account.id, visibility);
+      } catch (err) {
+        console.error('Search visibility fetch failed (non-fatal):', err.message);
+      }
     } else {
       // TikTok has no real integration built yet — always mock,
       // regardless of what's typed into the token field. Not silently

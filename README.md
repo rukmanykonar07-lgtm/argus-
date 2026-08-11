@@ -97,6 +97,13 @@ honestly falls back to demo data and labels itself "demo," not "live."
 - Meta's own Quality/Engagement/Conversion Rate rankings, surfaced at ad
   level — this is Meta's own diagnostic signal for why an ad underperforms
   vs competitors for the same audience, not our own inference
+- Engagement, Video Views, Link Clicks — pulled from Meta's existing
+  `actions` array (already fetched for conversions), zero extra API cost
+- Google Search Impression Share (+ the two loss reasons: rank/bid vs
+  budget) — campaign-level snapshot for Search/Shopping/PMax campaigns,
+  best-effort so a failure here can't break the main sync
+- KPI cards grouped into Outcomes / Efficiency & Delivery / Engagement
+  instead of one flat wall, so the eye lands on business results first
 - Date range (7/14/30/90d) with period-over-period % change
 - Search + status + platform filtering on the campaign table
 - Rule-based insights engine explaining performance shifts, at every level
@@ -110,12 +117,22 @@ date range slightly overcounts people who saw the ad on more than one day
 period, just a reasonable approximation. Frequency (impressions ÷ reach)
 inherits that same approximation.
 
+**Honest caveat on Engagement:** Meta's `post_engagement` action is their
+own rollup (likes + comments + shares + link clicks + a few more) — we're
+not recomputing it, just surfacing what Meta already reports.
+
+**Honest caveat on Search Impression Share:** it's a live snapshot (last
+7 days, at sync time), not stored daily history like the other metrics —
+so it won't show trend deltas or feed the sparklines the way Reach/CTR do.
+
 **Still not tracked — the real remaining gaps:**
-- Video metrics (ThruPlays, average watch time, video view rate)
-- Engagement metrics (post reactions, comments, shares, page likes)
+- Video watch-time metrics (ThruPlays, average watch time, video view rate
+  — we only have raw video_view count, not depth of watch)
 - Placement breakdown (feed vs. Stories vs. Reels vs. Audience Network)
 - Demographic/geographic breakdown (age, gender, region)
 - Google's reach/frequency (needs the separate Reach Planning API)
+- Google's Quality Score (separate from Search Impression Share, needs a
+  keyword-level query — not wired up yet)
 
 **Not built yet — the other remaining gaps:**
 - **TikTok Ads integration** — no fetch function exists at all
