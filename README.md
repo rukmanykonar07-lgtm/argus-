@@ -97,6 +97,21 @@ honestly falls back to demo data and labels itself "demo," not "live."
 - Meta's own Quality/Engagement/Conversion Rate rankings, surfaced at ad
   level — this is Meta's own diagnostic signal for why an ad underperforms
   vs competitors for the same audience, not our own inference
+- **Platform tabs now actually filter everything** — previously clicking
+  Meta/Google only filtered the breakdown table's row list; the KPI totals,
+  trend chart, and donut chart stayed combined regardless of tab. Fixed at
+  the root: `getClientSummary()` now accepts a `platform` filter and
+  recomputes the whole tree/timeseries/totals from platform-scoped metrics,
+  not just the campaign list.
+- **KPI groups are now genuinely platform-specific**, not one generic set
+  with "(Meta)" tags bolted on: Meta tab shows Reach/Frequency/Engagement
+  as real numbers with clean labels; Google tab drops those entirely (they
+  don't exist for Google) and shows a Search Visibility group instead when
+  the data's available; the "All" tab keeps the combined view with tags
+  since it's genuinely mixed data.
+- Fixed a bug where changing the date range silently reset the platform
+  tab back to "All" (selectClient was resetting it on every call, not
+  just when switching clients).
 - Engagement, Video Views, Link Clicks — pulled from Meta's existing
   `actions` array (already fetched for conversions), zero extra API cost
 - Google Search Impression Share (+ the two loss reasons: rank/bid vs

@@ -92,8 +92,9 @@ app.get('/api/ad-accounts/:id/metrics', (req, res) => {
 });
 
 function parseRangeQuery(req) {
-  const { days, since, until } = req.query;
-  return since && until ? { since, until } : { days: Number(days) || 30 };
+  const { days, since, until, platform } = req.query;
+  const range = since && until ? { since, until } : { days: Number(days) || 30 };
+  return { ...range, platform };
 }
 
 // Combined summary for one client — KPIs, full Campaign -> Ad Set -> Ad

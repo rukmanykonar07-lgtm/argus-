@@ -361,14 +361,21 @@
   }
 
   async function selectClient(id) {
+    // Only reset the platform filter when actually switching to a
+    // different client — previously this reset on every call, which
+    // silently threw away your Meta/Google selection on a date-range change
+    if (id !== activeClientId) activePlatformTab = 'all';
     activeClientId = id;
-    activePlatformTab = 'all';
     expandedPaths = new Set();
     renderSidebar();
+    await loadAndRenderSummary();
+  }
+
+  async function loadAndRenderSummary() {
     const main = document.getElementById('main-content');
     main.innerHTML = `<div class="syncing-overlay">LOADING…</div>`;
-    const client = clients.find(c => c.id === id);
-    const summary = await fetch(`/api/clients/${id}/summary?days=${currentRange}`).then(r => r.json());
+    const client = clients.find(c => c.id === activeClientId);
+    const summary = await fetch(`/api/clients/${activeClientId}/summary?days=${currentRange}&platform=${activePlatformTab}`).then(r => r.json());
     renderClientDetail(client, summary);
   }
 
@@ -580,7 +587,7 @@
     renderCampaignTable();
   }
 
-  function setPlatformTab(p) { activePlatformTab = p; renderView(currentView); }
+  function setPlatformTab(p) { activePlatformTab = p; loadAndRenderSummary(); }
 
   const METRIC_INFO = {
     spend: 'Total amount spent on ads in this period.',
@@ -597,6 +604,9 @@
     engagement_rate: 'Engagement as a % of impressions — how often people who saw the ad actually interacted with it. Meta only.',
     video_views: 'Number of times a video ad was watched. Only non-zero for video creatives. Meta only.',
     link_clicks: 'Clicks specifically on a link in the ad, a subset of total clicks. Meta only.',
+    sv_share: 'Search Impression Share — % of eligible searches your ad actually showed on (last 7 days). Google Search/Shopping/PMax campaigns only.',
+    sv_rank: '% of impressions lost because your bid or Quality Score wasn\'t competitive enough — a targeting/creative/landing-page problem, not a budget one.',
+    sv_budget: '% of impressions lost because the campaign ran out of daily budget — raise budget to capture this.',
   };
 
   function jumpToBreakdown(metricKey) {
@@ -609,35 +619,74 @@
     const t = window._summary.totals;
     const d = window._summary.deltas;
     const ts = window._summary.timeseries;
+    const sv = window._summary.searchVisibilityAvg;
     const spark = key => sparklineSvg(ts.map(r => r[key]), '#d97706');
-    const metaOnlyKeys = new Set(['reach', 'frequency', 'engagement', 'engagement_rate', 'video_views', 'link_clicks']);
-    const isMetaOnly = key => metaOnlyKeys.has(key);
 
-    // Regrouped from one flat wall of cards into labeled sections so the
-    // eye can jump straight to "did we make money" before drilling into
-    // efficiency or engagement diagnostics.
-    const groups = [
-      { label: 'Outcomes', cards: [
-        { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
-        { label: 'Revenue', val: fmtMoney(t.revenue), delta: d.revenue, key: 'revenue' },
-        { label: 'ROAS', val: t.roas ? t.roas.toFixed(2) + 'x' : '—', delta: d.roas, key: 'roas' },
-        { label: 'CPA', val: t.cpa ? fmtMoney(t.cpa) : '—', delta: d.cpa, key: 'cpa' },
-        { label: 'Conversions', val: fmtNum(t.conversions), delta: null, key: 'conversions' },
-      ]},
-      { label: 'Efficiency & Delivery', cards: [
+    const outcomesGroup = { label: 'Outcomes', cards: [
+      { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
+      { label: 'Revenue', val: fmtMoney(t.revenue), delta: d.revenue, key: 'revenue' },
+      { label: 'ROAS', val: t.roas ? t.roas.toFixed(2) + 'x' : '—', delta: d.roas, key: 'roas' },
+      { label: 'CPA', val: t.cpa ? fmtMoney(t.cpa) : '—', delta: d.cpa, key: 'cpa' },
+      { label: 'Conversions', val: fmtNum(t.conversions), delta: null, key: 'conversions' },
+    ]};
+
+    const groups = [outcomesGroup];
+
+    // Groups now genuinely branch by the selected platform tab instead of
+    // showing one static set with "(Meta)" tags scattered through it —
+    // Google doesn't have Reach/Frequency/Engagement at all, so those cards
+    // are dropped entirely rather than shown as permanent N/A clutter.
+    if (activePlatformTab === 'google') {
+      groups.push({ label: 'Efficiency', cards: [
         { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
         { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
         { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
-        { label: 'Reach', val: t.reach ? fmtNum(t.reach) : 'N/A', delta: null, key: 'reach' },
-        { label: 'Frequency', val: t.frequency ? t.frequency.toFixed(2) + 'x' : 'N/A', delta: null, key: 'frequency' },
-      ]},
-      { label: 'Engagement', cards: [
+      ]});
+      if (sv) {
+        groups.push({ label: 'Search Visibility', cards: [
+          { label: 'Impression Share', val: sv.search_impression_share.toFixed(1) + '%', delta: null, key: 'sv_share' },
+          { label: 'Lost to Rank/Bid', val: sv.search_rank_lost_impression_share.toFixed(1) + '%', delta: null, key: 'sv_rank' },
+          { label: 'Lost to Budget', val: sv.search_budget_lost_impression_share.toFixed(1) + '%', delta: null, key: 'sv_budget' },
+        ]});
+      }
+    } else if (activePlatformTab === 'meta') {
+      groups.push({ label: 'Efficiency & Delivery', cards: [
+        { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
+        { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
+        { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
+        { label: 'Reach', val: t.reach ? fmtNum(t.reach) : '—', delta: null, key: 'reach' },
+        { label: 'Frequency', val: t.frequency ? t.frequency.toFixed(2) + 'x' : '—', delta: null, key: 'frequency' },
+      ]});
+      groups.push({ label: 'Engagement', cards: [
+        { label: 'Engagements', val: t.engagement ? fmtNum(t.engagement) : '—', delta: null, key: 'engagement' },
+        { label: 'Engagement Rate', val: t.engagement_rate ? t.engagement_rate.toFixed(2) + '%' : '—', delta: null, key: 'engagement_rate' },
+        { label: 'Video Views', val: t.video_views ? fmtNum(t.video_views) : '—', delta: null, key: 'video_views' },
+        { label: 'Link Clicks', val: t.link_clicks ? fmtNum(t.link_clicks) : '—', delta: null, key: 'link_clicks' },
+      ]});
+    } else {
+      // "All" — mixed platforms, so metrics that don't apply everywhere
+      // stay tagged and show N/A rather than a blank/misleading zero
+      groups.push({ label: 'Efficiency & Delivery', cards: [
+        { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
+        { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
+        { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
+        { label: 'Reach (Meta)', val: t.reach ? fmtNum(t.reach) : 'N/A', delta: null, key: 'reach' },
+        { label: 'Frequency (Meta)', val: t.frequency ? t.frequency.toFixed(2) + 'x' : 'N/A', delta: null, key: 'frequency' },
+      ]});
+      groups.push({ label: 'Engagement (Meta)', cards: [
         { label: 'Engagements', val: t.engagement ? fmtNum(t.engagement) : 'N/A', delta: null, key: 'engagement' },
         { label: 'Engagement Rate', val: t.engagement_rate ? t.engagement_rate.toFixed(2) + '%' : 'N/A', delta: null, key: 'engagement_rate' },
         { label: 'Video Views', val: t.video_views ? fmtNum(t.video_views) : 'N/A', delta: null, key: 'video_views' },
         { label: 'Link Clicks', val: t.link_clicks ? fmtNum(t.link_clicks) : 'N/A', delta: null, key: 'link_clicks' },
-      ]},
-    ];
+      ]});
+      if (sv) {
+        groups.push({ label: 'Search Visibility (Google)', cards: [
+          { label: 'Impression Share', val: sv.search_impression_share.toFixed(1) + '%', delta: null, key: 'sv_share' },
+          { label: 'Lost to Rank/Bid', val: sv.search_rank_lost_impression_share.toFixed(1) + '%', delta: null, key: 'sv_rank' },
+          { label: 'Lost to Budget', val: sv.search_budget_lost_impression_share.toFixed(1) + '%', delta: null, key: 'sv_budget' },
+        ]});
+      }
+    }
 
     document.getElementById('kpi-groups').innerHTML = groups.map(g => `
       <div class="kpi-group">
@@ -645,9 +694,9 @@
         <div class="kpi-grid">
           ${g.cards.map(c => `
             <div class="kpi-card" title="${escapeHtml(METRIC_INFO[c.key] || '')}" onclick="jumpToBreakdown('${c.key}')">
-              <div class="kpi-label">${c.label}${isMetaOnly(c.key) ? ' <span style="opacity:0.5;">(Meta)</span>' : ''}</div>
+              <div class="kpi-label">${c.label}</div>
               <div class="kpi-value-row"><div class="kpi-value">${c.val}</div>${deltaHtml(c.delta)}</div>
-              ${spark(c.key)}
+              ${c.key.startsWith('sv_') ? '' : spark(c.key)}
             </div>
           `).join('')}
         </div>
@@ -885,7 +934,7 @@
 
   function setRange(days) {
     currentRange = days;
-    if (activeClientId) selectClient(activeClientId); else showPortfolio();
+    if (activeClientId) loadAndRenderSummary(); else showPortfolio();
   }
 
   async function syncAllAccounts(clientId) {
