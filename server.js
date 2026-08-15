@@ -98,15 +98,15 @@ app.get('/api/clients', (req, res) => {
 });
 
 app.post('/api/clients', (req, res) => {
-  const { name, status, notes, target_cpa, target_roas, monthly_budget, webhook_url } = req.body;
+  const { name, status, notes, target_cpa, target_roas, monthly_budget, webhook_url, management_fee_pct } = req.body;
   if (!name) return res.status(400).json({ error: 'name required' });
-  const id = store.addClient({ name, status, notes, target_cpa, target_roas, monthly_budget, webhook_url });
+  const id = store.addClient({ name, status, notes, target_cpa, target_roas, monthly_budget, webhook_url, management_fee_pct });
   res.json({ id });
 });
 
 app.patch('/api/clients/:id', (req, res) => {
-  const { status, notes, target_cpa, target_roas, monthly_budget, webhook_url } = req.body;
-  const ok = store.updateClient(req.params.id, { status, notes, target_cpa, target_roas, monthly_budget, webhook_url });
+  const { status, notes, target_cpa, target_roas, monthly_budget, webhook_url, management_fee_pct } = req.body;
+  const ok = store.updateClient(req.params.id, { status, notes, target_cpa, target_roas, monthly_budget, webhook_url, management_fee_pct });
   if (!ok) return res.status(404).json({ error: 'client not found' });
   res.json({ ok: true });
 });

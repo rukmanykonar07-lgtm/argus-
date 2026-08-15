@@ -402,6 +402,8 @@
     <div class="modal-hint">Monthly budget enables pacing — "on track / over / under" vs how far through the month you are.</div>
     <input type="text" id="goal-webhook-url" placeholder="Slack/Discord webhook URL (optional)">
     <div class="modal-hint">Get pinged automatically when the daily auto-sync (6am) finds a concern — no need to open the dashboard. Leave blank to skip.</div>
+    <input type="number" step="0.1" id="goal-management-fee-pct" placeholder="Management fee (% of spend, optional)">
+    <div class="modal-hint">Shows your billable fee for the period next to spend — one flat %, not tiered.</div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeGoalsModal()">Cancel</button>
       <button class="btn-save" onclick="saveGoals()">Save</button>
@@ -657,12 +659,12 @@
           <div id="brand-insight"></div>
         </div>
       </div>
-      ${(summary.goalInsight || summary.pacing) ? `
+      ${(summary.goalInsight || summary.pacing || summary.managementFee) ? `
         <div class="insights-panel">
           <div class="panel-block">
             <div class="panel-title-row"><div class="panel-title">Goals & Pacing</div><div class="ctoggle-btn" onclick="openGoalsModal(${client.id})">Edit</div></div>
             ${summary.goalInsight ? `
-              <div class="insight-card ${summary.goalInsight.severity}" style="margin-bottom:${summary.pacing ? '10px' : '0'};">
+              <div class="insight-card ${summary.goalInsight.severity}" style="margin-bottom:${summary.pacing || summary.managementFee ? '10px' : '0'};">
                 <div class="insight-icon"></div>
                 <div>
                   <div class="insight-title">${escapeHtml(summary.goalInsight.title)}</div>
@@ -671,6 +673,11 @@
               </div>
             ` : ''}
             ${summary.pacing ? renderPacing(summary.pacing) : ''}
+            ${summary.managementFee ? `
+              <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim-solid);${summary.pacing ? 'margin-top:10px;padding-top:10px;border-top:1px solid var(--line);' : ''}">
+                Management fee (${summary.managementFee.pct}% of period spend): <span style="color:var(--brass);">${fmtMoney(summary.managementFee.amount)}</span>
+              </div>
+            ` : ''}
           </div>
         </div>
       ` : ''}
@@ -1243,6 +1250,7 @@
     document.getElementById('goal-target-roas').value = c && c.target_roas != null ? c.target_roas : '';
     document.getElementById('goal-monthly-budget').value = c && c.monthly_budget != null ? c.monthly_budget : '';
     document.getElementById('goal-webhook-url').value = c && c.webhook_url ? c.webhook_url : '';
+    document.getElementById('goal-management-fee-pct').value = c && c.management_fee_pct != null ? c.management_fee_pct : '';
     document.getElementById('goals-modal-overlay').classList.add('open');
   }
   function closeGoalsModal() { document.getElementById('goals-modal-overlay').classList.remove('open'); }
@@ -1251,6 +1259,7 @@
     const target_roas = document.getElementById('goal-target-roas').value.trim();
     const monthly_budget = document.getElementById('goal-monthly-budget').value.trim();
     const webhook_url = document.getElementById('goal-webhook-url').value.trim();
+    const management_fee_pct = document.getElementById('goal-management-fee-pct').value.trim();
     await fetch(`/api/clients/${goalsModalClientId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1258,6 +1267,7 @@
         target_roas: target_roas === '' ? null : target_roas,
         monthly_budget: monthly_budget === '' ? null : monthly_budget,
         webhook_url: webhook_url === '' ? null : webhook_url,
+        management_fee_pct: management_fee_pct === '' ? null : management_fee_pct,
       }),
     });
     closeGoalsModal();
