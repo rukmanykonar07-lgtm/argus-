@@ -1,5 +1,6 @@
 node_modules/
 argus_pulse_data.json
 argus_pulse.db*
+argus_pulse.key
 .env
 *.log
