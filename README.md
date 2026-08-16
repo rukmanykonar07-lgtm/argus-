@@ -13,24 +13,6 @@ run it on. When you hand this to a client, deploy their copy on
 **their own server or computer** — their ad data never touches
 anything you control.
 
-**No login/auth layer.** This is intentional for a single-agency tool
-running on your own laptop — anyone who can reach `localhost:3001`
-already has physical/network access to that machine. If you ever run
-a copy somewhere reachable by more than just you (a shared office
-network, a cloud VM, etc.), put it behind a reverse proxy with auth
-in front — the app itself doesn't gate any route.
-
-**Ad account tokens are encrypted at rest and never sent back to the
-browser.** A local key file (`argus_pulse.key`, gitignored, chmod 600)
-is generated next to the data file on first run; tokens are encrypted
-with it before touching disk, and the `/api/clients` response only
-ever tells the frontend *whether* a token is set (`has_access_token`,
-etc.), never the value. This protects against someone opening the
-JSON file, grabbing a backup, or reading the API response in
-devtools — not against someone with full access to the same machine
-and the key file sitting next to it. There's no secure enclave on a
-laptop; that's the realistic bar.
-
 ## Run it
 
 ```bash
@@ -47,21 +29,14 @@ client, add an ad account with no real ID, hit sync.
 `external_account_id` (the `act_XXXXXXXXX` from Meta Ads Manager) and
 an access token, and it pulls real campaign data via the Insights API.
 
-**✅ Google Ads — live, two ways to authenticate.** Add a real customer
-ID and a Developer Token (Manager/MCC Customer ID optional but usually
-required), then either:
-- **Recommended — OAuth Client ID + Client Secret + Refresh Token.**
-  Self-renewing: sync fetches a fresh ~hour-long access token from
-  Google automatically every time, including for the scheduled
-  auto-sync below. Set these up once in a Google Cloud OAuth app.
-- **Manual — a pasted Access Token.** Works immediately with no OAuth
-  app setup, but Google tokens expire in about an hour, so you'll need
-  to paste a fresh one before each manual sync. Fine for testing;
-  not for the scheduled auto-sync, since there's nothing to
-  auto-renew it.
-
-(Meta's System User tokens don't expire on a timer, so paste-once
-works fine there — no refresh flow needed for Meta.)
+**✅ Google Ads — live, with one honest caveat.** Add a real customer
+ID, an OAuth access token, and a Developer Token (Manager/MCC Customer
+ID optional but usually required), and it pulls real data via GAQL.
+**The caveat:** Google access tokens expire in about an hour. Meta's
+System User tokens don't expire on a timer, so paste-once works there.
+Google doesn't — you'll need to paste a fresh access token before each
+sync until a proper OAuth refresh-token flow is built (`lib/google.js`
+has the fetch logic; the refresh flow is the missing piece).
 
 **❌ TikTok Ads — not connected, on purpose, and it says so.** No fetch
 function exists for TikTok yet. Even if you paste a token into a
@@ -187,36 +162,24 @@ so it won't show trend deltas or feed the sparklines the way Reach/CTR do.
 - Google's Quality Score (separate from Search Impression Share, needs a
   keyword-level query — not wired up yet)
 
-**Fixed since the first pass:**
-- **Google OAuth refresh-token flow** — build it once with a Client
-  ID + Client Secret + Refresh Token, sync self-renews from there
-  (`lib/google.js` → `getAccessTokenFromRefreshToken`). Manual
-  access-token paste still works too, as a fallback.
-- **Scheduled auto-sync** — `node-cron` now actually runs
-  `syncAllAccounts()` daily at 6am (`server.js`, bottom). "Sync All"
-  in the UI still works for on-demand syncs.
-- **Token encryption at rest** — access/developer/refresh tokens and
-  the OAuth client secret are AES-256-GCM encrypted before hitting
-  `argus_pulse_data.json`, using a locally generated key file
-  (`argus_pulse.key`, gitignored, chmod 600). See `lib/crypto.js`.
-- **Token leak via the API** — `GET /api/clients` used to return raw
-  tokens to the browser (visible in devtools). It now only returns
-  `has_access_token` / `has_developer_token` / `has_refresh_token`
-  booleans; the actual values never leave the server.
-
-**Not built yet — the real remaining gaps:**
+**Not built yet — the other remaining gaps:**
 - **TikTok Ads integration** — no fetch function exists at all
+- **Google OAuth refresh-token flow** — currently needs a manually
+  re-pasted access token every ~hour for live syncs to keep working
+- **Scheduled auto-sync** — still a manual "Sync All" button;
+  `node-cron` is installed but not wired up
 - **White-label client portal** — only you see the dashboard right
   now; no separate branded client login
 - **PDF/scheduled email reports** — the "lands in your inbox every
   Monday" pitch competitors lead with isn't built
 - **SEO/rank tracking or non-ads channels** — this tool is ads-only;
   AgencyAnalytics/Oviond cover 50-85+ integrations beyond ad platforms
+- **Token encryption at rest** — currently stored as plain text in the
+  JSON file. Fine for single-agency internal use, **must fix before
+  selling this to other agencies** who'll store their own clients'
+  tokens in it
 - **Multi-tenant signup flow** — the `tenant_id` field exists in the
-  schema for this, but everything currently defaults to `'default'`.
-  Fine as-is for the "one copy per client" model since each install
-  is single-tenant by nature; only matters if this ever becomes one
-  shared hosted instance serving multiple agencies.
+  schema for this, but everything currently defaults to `'default'`
 
 ## Stack
 

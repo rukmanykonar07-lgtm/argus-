@@ -6,321 +6,186 @@
 <title>ARGUS Pulse — Agency Ad Command Center</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=IBM+Plex+Mono:wght@400;500&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
-  /* ============================================================
-     ARGUS PULSE — "The Watch", in daylight
-     Argus doesn't need darkness to watch — a hundred eyes exist for
-     visibility, not gloom. Same concept as before (the aperture status
-     motif, the brand mark), re-executed light: white cards on a cool
-     off-white ground, brass as the one warm accent against an otherwise
-     quiet neutral palette. Rebuilt after reviewing 7 reference dashboards
-     — every one of them was light-mode, which is the actual signal that
-     mattered more than any individual layout trick.
-     ============================================================ */
   :root {
-    /* Ground: cool off-white, not the cream+warm-accent combination that
-       reads as an AI-generated default. Cards sit whiter than the ground
-       so structure reads from value contrast, not just borders. */
-    --bg: #f5f5f7;
-    --panel: #ffffff;
-    --panel-2: #fafafa;
-    --panel-3: #f0f0f2;
-    --line: #e4e3e7;
-    --line-soft: #ececee;
-
-    --ink: #1e1b26;
-    --ink-dim: #6b6577;
-    --ink-faint: #9b96a5;
-
-    /* Brass — the one warm, saturated color in the system. Darker/more
-       saturated here than the dark-mode version needed to be, since it
-       has to hold its own on white instead of glowing on black. */
-    --brass: #a97b28;
-    --brass-bright: #c4922f;
-    --brass-tint: #fbf1de;
-
-    --sage: #3f7a58;
-    --sage-tint: #e6f2ea;
-    --rust: #b8503a;
-    --rust-tint: #fbe9e4;
-
-    --meta: #4a6fa8;
-    --google: #a3841f;
-    --tiktok: #a24b6b;
-
-    --shadow-sm: 0 1px 2px rgba(30,27,38,0.04), 0 1px 6px rgba(30,27,38,0.05);
-    --shadow: 0 2px 4px rgba(30,27,38,0.04), 0 10px 24px rgba(30,27,38,0.07);
-
-    --display: 'Fraunces', serif;
-    --mono: 'IBM Plex Mono', monospace;
-    --body: 'IBM Plex Sans', sans-serif;
+    --bg: #f5f6fa; --sidebar: #ffffff; --panel: #ffffff; --panel-2: #f6f7fb;
+    --line: #e6e8f0; --amber: #d97706; --amber-dim: #f3d9ae;
+    --green: #16a34a; --red: #dc2626; --blue: #2563eb;
+    --text: #14161f; --text-dim: #6b7280;
+    --meta: #2563eb; --google: #eab308; --tiktok: #e11d48;
+    --shadow: 0 1px 2px rgba(20,22,31,0.04), 0 2px 8px rgba(20,22,31,0.05);
+    --display: 'Sora', sans-serif; --mono: 'IBM Plex Mono', monospace; --body: 'Inter', sans-serif;
   }
-
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; -webkit-font-smoothing: antialiased; }
-  ::selection { background: var(--brass-tint); color: var(--brass); }
-  :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 3px; }
-
+  body { background: var(--bg); color: var(--text); font-family: var(--body); }
   .app { display: flex; min-height: 100vh; }
-
-  /* ---------- Sidebar ---------- */
-  .sidebar { width: 256px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; }
-  .sidebar-head { padding: 22px 20px 18px; border-bottom: 1px solid var(--line); cursor: pointer; }
-  .brand { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
-  .brand-mark { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--brass); position: relative; flex-shrink: 0; }
-  .brand-mark::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--brass); }
-  .brand span { color: var(--brass); font-weight: 400; opacity: 0.75; }
-  .brand-sub { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); margin-top: 6px; letter-spacing: 0.09em; text-transform: uppercase; padding-left: 23px; }
-  .client-nav { flex: 1; overflow-y: auto; padding: 12px 10px; }
-  .client-nav-label { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); letter-spacing: 0.09em; padding: 8px 10px 8px; text-transform: uppercase; }
-  .client-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 11px; border-radius: 8px; cursor: pointer; margin-bottom: 1px; font-size: 13px; font-weight: 500; color: var(--ink-dim); }
-  .client-item:hover { background: var(--panel-3); color: var(--ink); }
-  .client-item.active { background: var(--brass-tint); color: var(--brass); }
-  .client-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); margin-right: 9px; flex-shrink: 0; display: inline-block; }
-  .client-item .dot.paused { background: var(--ink-faint); opacity: 0.5; }
+  .sidebar { width: 250px; flex-shrink: 0; background: var(--sidebar); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; box-shadow: 1px 0 4px rgba(20,22,31,0.03); }
+  .sidebar-head { padding: 20px 18px 16px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .brand { font-family: var(--display); font-weight: 800; font-size: 17px; letter-spacing: -0.01em; }
+  .brand span { color: var(--amber); }
+  .brand-sub { font-family: var(--mono); font-size: 9px; color: var(--text-dim); margin-top: 4px; letter-spacing: 0.04em; }
+  .client-nav { flex: 1; overflow-y: auto; padding: 10px; }
+  .client-nav-label { font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); letter-spacing: 0.08em; padding: 8px 10px 6px; text-transform: uppercase; }
+  .client-item { display: flex; align-items: center; justify-content: space-between; padding: 9px 11px; border-radius: 7px; cursor: pointer; margin-bottom: 2px; font-size: 13px; font-weight: 500; }
+  .client-item:hover { background: var(--panel-2); }
+  .client-item.active { background: var(--panel-2); color: var(--amber); }
+  .client-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); margin-right: 8px; flex-shrink: 0; display: inline-block; }
+  .client-item .dot.paused { background: var(--text-dim); }
   .ci-left { display: flex; align-items: center; overflow: hidden; }
   .ci-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .ci-count { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); flex-shrink: 0; }
-  .sidebar-foot { padding: 16px; border-top: 1px solid var(--line); }
-  .add-client-btn { width: 100%; background: var(--brass-tint); color: var(--brass); border: 1px solid transparent; font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: 0.02em; padding: 11px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
-  .add-client-btn:hover { background: #f5e6c8; }
-
-  /* ---------- Layout ---------- */
-  .main { flex: 1; min-width: 0; padding: 30px 38px 70px; }
-  .portfolio-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
-  .portfolio-title { font-family: var(--display); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
-  .portfolio-sub { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 5px; letter-spacing: 0.02em; }
-  .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 14px; }
-
-  .portfolio-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; cursor: pointer; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; box-shadow: var(--shadow-sm); position: relative; }
-  .portfolio-card:hover { border-color: var(--ink-faint); transform: translateY(-1px); box-shadow: var(--shadow); }
-  .portfolio-card.sev-concern { border-color: rgba(184,80,58,0.35); }
-  .portfolio-card.sev-concern::before { content: ''; position: absolute; top: 18px; right: 18px; width: 8px; height: 8px; border-radius: 50%; background: var(--rust); animation: watch-pulse 2.4s ease-in-out infinite; }
-  .portfolio-section-label { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; margin: 22px 0 11px; display: flex; align-items: center; gap: 8px; }
-  .portfolio-section-label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--ink-faint); flex-shrink: 0; }
+  .ci-count { font-family: var(--mono); font-size: 9.5px; color: var(--text-dim); flex-shrink: 0; }
+  .sidebar-foot { padding: 14px; border-top: 1px solid var(--line); }
+  .add-client-btn { width: 100%; background: var(--amber); color: #ffffff; border: none; font-weight: 600; font-size: 13px; padding: 10px; border-radius: 7px; cursor: pointer; }
+  .add-client-btn:hover { background: #b45f04; }
+  .main { flex: 1; min-width: 0; padding: 26px 34px 60px; }
+  .portfolio-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 20px; }
+  .portfolio-title { font-family: var(--display); font-size: 23px; font-weight: 700; }
+  .portfolio-sub { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+  .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 13px; }
+  .portfolio-card { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--line); border-radius: 10px; padding: 17px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s; box-shadow: var(--shadow); }
+  .portfolio-card:hover { border-color: var(--amber-dim); }
+  .portfolio-card.sev-concern { border-left-color: var(--red); }
+  .portfolio-card.sev-good, .portfolio-card.sev-perfect { border-left-color: var(--green); }
+  .portfolio-card.sev-neutral { border-left-color: var(--amber); }
+  .portfolio-section-label { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.06em; margin: 18px 0 10px; }
   .portfolio-section-label:first-of-type { margin-top: 0; }
-  .pc-status { font-family: var(--mono); font-size: 10.5px; margin-bottom: 13px; }
-  .pc-status.concern { color: var(--rust); }
-  .pc-status.perfect { color: var(--sage); }
-  .pc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
-  .pc-name { font-family: var(--display); font-weight: 600; font-size: 15px; }
-  .mode-badge { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.06em; padding: 3px 7px; border-radius: 5px; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; }
-  .mode-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
-  .mode-badge.live { background: var(--sage-tint); color: var(--sage); }
-  .mode-badge.live::before { background: var(--sage); }
-  .mode-badge.demo { background: var(--panel-3); color: var(--ink-faint); }
-  .mode-badge.demo::before { border: 1px solid var(--ink-faint); }
-  .pc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .pc-stat-label { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; }
-  .pc-stat-val { font-family: var(--display); font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; color: var(--ink); }
-
-  .back-link { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); cursor: pointer; margin-bottom: 12px; display: inline-flex; align-items: center; gap: 5px; }
-  .back-link::before { content: '←'; }
-  .back-link:hover { color: var(--brass); }
-  .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
-  .client-title-row { display: flex; align-items: center; gap: 10px; }
-  .client-title { font-family: var(--display); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
-  .client-title-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 5px; }
-  .top-actions { display: flex; gap: 8px; align-items: center; }
-  .sync-btn, .manage-btn { font-family: var(--mono); font-size: 11px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-dim); padding: 8px 14px; border-radius: 7px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
-  .sync-btn:hover, .manage-btn:hover { border-color: var(--brass); color: var(--brass); }
-  .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
-
-  /* Underline tabs (pulled from the Drift reference) instead of pill
-     tabs — reserve the pill/filled treatment for the view-tabs below so
-     the two tab systems stay visually distinct from each other. */
-  .platform-tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--line); }
-  .ptab { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); padding: 9px 2px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.02em; border-bottom: 2px solid transparent; transition: color 0.15s; }
-  .ptab.active { color: var(--brass); border-bottom-color: var(--brass); }
+  .pc-status { font-family: var(--mono); font-size: 10.5px; margin-bottom: 12px; }
+  .pc-status.concern { color: var(--red); }
+  .pc-status.perfect { color: var(--green); }
+  .pc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 13px; }
+  .pc-name { font-family: var(--display); font-weight: 600; font-size: 14.5px; }
+  .mode-badge { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.05em; padding: 3px 6px; border-radius: 4px; text-transform: uppercase; }
+  .mode-badge.live { background: rgba(111,207,151,0.12); color: var(--green); border: 1px solid rgba(111,207,151,0.3); }
+  .mode-badge.demo { background: rgba(146,140,126,0.12); color: var(--text-dim); border: 1px solid var(--line); }
+  .pc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 9px; }
+  .pc-stat-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; }
+  .pc-stat-val { font-family: var(--display); font-size: 15px; font-weight: 700; margin-top: 2px; }
+  .back-link { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); cursor: pointer; margin-bottom: 10px; display: inline-block; }
+  .back-link:hover { color: var(--amber); }
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+  .client-title-row { display: flex; align-items: center; gap: 9px; }
+  .client-title { font-family: var(--display); font-size: 22px; font-weight: 700; }
+  .client-title-meta { font-family: var(--mono); font-size: 11px; color: var(--text-dim); margin-top: 4px; }
+  .top-actions { display: flex; gap: 7px; align-items: center; }
+  .sync-btn, .manage-btn { font-family: var(--mono); font-size: 11px; background: transparent; border: 1px solid var(--line); color: var(--text-dim); padding: 7px 13px; border-radius: 6px; cursor: pointer; }
+  .sync-btn:hover, .manage-btn:hover { border-color: var(--amber); color: var(--amber); }
+  .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 10px; }
+  .platform-tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+  .ptab { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); padding: 6px 12px; border-radius: 6px; cursor: pointer; text-transform: uppercase; }
+  .ptab.active { background: var(--panel-2); color: var(--amber); }
   .range-row { display: flex; gap: 5px; }
-  .range-btn { font-family: var(--mono); font-size: 10.5px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-faint); padding: 7px 13px; border-radius: 7px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
-  .range-btn.active { border-color: var(--brass); color: var(--brass); background: var(--brass-tint); }
-  .accounts-strip { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 20px; }
-  .account-pill { font-family: var(--mono); font-size: 10px; color: var(--ink-dim); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 6px 13px; }
-  .account-pill .plat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; }
-  .account-pill .never { color: var(--rust); }
-  .sis-badge { font-family: var(--mono); font-size: 9px; color: var(--google); background: rgba(163,132,31,0.1); border: 1px solid rgba(163,132,31,0.25); border-radius: 4px; padding: 1px 6px; margin-left: 8px; }
-
-  /* ---------- Hero KPI (pulled from the Analytics reference) ----------
-     One bold color-block card for the single most important number,
-     asymmetric against the smaller cards next to it — not another
-     uniform grid tile. Used for the top-line spend figure. */
-  .hero-kpi { background: linear-gradient(135deg, var(--brass) 0%, var(--brass-bright) 100%); border-radius: 16px; padding: 22px 24px; color: #fff; box-shadow: 0 8px 24px rgba(169,123,40,0.25); }
-  .hero-kpi-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; margin-bottom: 8px; }
-  .hero-kpi-value { font-family: var(--display); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .hero-kpi-delta { font-family: var(--mono); font-size: 11px; opacity: 0.9; margin-top: 6px; }
-
-  /* ---------- KPIs ---------- */
-  .kpi-group { margin-bottom: 18px; }
-  .kpi-group-label { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; }
-  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
-  .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 15px 16px; box-shadow: var(--shadow-sm); cursor: pointer; transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s; }
-  .kpi-card:hover { border-color: var(--ink-faint); transform: translateY(-1px); box-shadow: var(--shadow); }
-  .kpi-label { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 7px; }
-  .kpi-value-row { display: flex; align-items: baseline; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
-  .kpi-value { font-family: var(--display); font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
-  .kpi-delta { font-family: var(--mono); font-size: 10px; padding: 1px 6px; border-radius: 4px; }
-  .kpi-delta.up { color: var(--sage); background: var(--sage-tint); }
-  .kpi-delta.down { color: var(--rust); background: var(--rust-tint); }
+  .range-btn { font-family: var(--mono); font-size: 10.5px; background: var(--panel); border: 1px solid var(--line); color: var(--text-dim); padding: 6px 12px; border-radius: 6px; cursor: pointer; }
+  .range-btn.active { border-color: var(--amber); color: var(--amber); }
+  .accounts-strip { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 18px; }
+  .account-pill { font-family: var(--mono); font-size: 10px; color: var(--text-dim); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 5px 12px; }
+  .account-pill .plat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 6px; }
+  .account-pill .never { color: var(--red); }
+  .sis-badge { font-family: var(--mono); font-size: 9px; color: var(--google); background: rgba(234,179,8,0.12); border: 1px solid rgba(234,179,8,0.3); border-radius: 4px; padding: 1px 6px; margin-left: 8px; }
+  .kpi-group { margin-bottom: 16px; }
+  .kpi-group-label { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 8px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+  .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 15px; box-shadow: var(--shadow); cursor: pointer; transition: transform 0.1s, box-shadow 0.1s; }
+  .kpi-card:hover { transform: translateY(-1px); box-shadow: 0 2px 4px rgba(20,22,31,0.06), 0 4px 12px rgba(20,22,31,0.08); }
+  .kpi-label { font-family: var(--mono); font-size: 9px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+  .kpi-value-row { display: flex; align-items: baseline; gap: 6px; margin-bottom: 8px; }
+  .kpi-value { font-family: var(--display); font-size: 18px; font-weight: 700; }
+  .kpi-delta { font-family: var(--mono); font-size: 10px; }
+  .kpi-delta.up { color: var(--green); }
+  .kpi-delta.down { color: var(--red); }
   .sparkline { display: block; }
-
-  .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 22px; }
-  .panel-block { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 19px; box-shadow: var(--shadow-sm); }
-  .panel-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-  .panel-title { font-family: var(--mono); font-size: 10.5px; font-weight: 500; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+  .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 20px; }
+  .panel-block { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 18px; box-shadow: var(--shadow); }
+  .panel-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .panel-title { font-family: var(--display); font-size: 12.5px; font-weight: 600; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.05em; }
   .chart-toggle { display: flex; gap: 3px; }
-  .ctoggle-btn { font-family: var(--mono); font-size: 9.5px; background: var(--panel-3); border: 1px solid var(--line); color: var(--ink-faint); padding: 4px 9px; border-radius: 5px; cursor: pointer; }
-  .ctoggle-btn.active { color: var(--brass); border-color: var(--brass); background: var(--brass-tint); }
+  .ctoggle-btn { font-family: var(--mono); font-size: 9.5px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text-dim); padding: 4px 9px; border-radius: 5px; cursor: pointer; }
+  .ctoggle-btn.active { color: var(--amber); border-color: var(--amber-dim); }
   canvas { max-height: 220px; }
-  .donut-legend { display: flex; flex-direction: column; gap: 9px; margin-top: 13px; }
-  .legend-row { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
-  .legend-left { display: flex; align-items: center; gap: 8px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+  .legend-row { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 11px; }
+  .legend-left { display: flex; align-items: center; gap: 7px; }
   .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
-  .legend-val { color: var(--ink-faint); }
-
-  .view-tabs { display: flex; gap: 4px; background: var(--panel-3); border-radius: 10px; padding: 4px; margin-bottom: 20px; width: fit-content; }
-  .vtab { font-family: var(--body); font-weight: 600; font-size: 12.5px; color: var(--ink-faint); padding: 8px 17px; border-radius: 7px; cursor: pointer; transition: color 0.15s, background 0.15s; }
-  .vtab.active { background: var(--panel); color: var(--brass); box-shadow: var(--shadow-sm); }
+  .legend-val { color: var(--text-dim); }
+  .view-tabs { display: flex; gap: 4px; background: var(--panel); border: 1px solid var(--line); border-radius: 9px; padding: 4px; margin-bottom: 18px; width: fit-content; }
+  .vtab { font-family: var(--body); font-weight: 600; font-size: 12.5px; color: var(--text-dim); padding: 8px 16px; border-radius: 6px; cursor: pointer; }
+  .vtab.active { background: var(--panel-2); color: var(--amber); }
   .view-container { display: none; }
-
-  .attention-path { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
-  .attention-stats { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
-  .insights-panel { margin-bottom: 22px; }
+  .attention-path { font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 5px; }
+  .attention-stats { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); }
+  .insights-panel { margin-bottom: 20px; }
   .insights-panel .insight-card { margin-bottom: 8px; }
 
-  .insight-card { display: flex; gap: 13px; padding: 15px 17px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel-2); }
-  .insight-icon { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--ink-faint); flex-shrink: 0; margin-top: 3px; position: relative; }
-  .insight-card.concern .insight-icon { border-color: var(--rust); }
-  .insight-card.concern .insight-icon::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--rust); }
-  .insight-card.good .insight-icon, .insight-card.perfect .insight-icon { border-color: var(--sage); }
-  .insight-card.good .insight-icon::after, .insight-card.perfect .insight-icon::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--sage); }
-  .insight-card.neutral .insight-icon { border-color: var(--brass); }
-  .insight-card.neutral .insight-icon::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--brass); }
+  .insight-card { display: flex; gap: 12px; padding: 14px 16px; border-radius: 9px; border: 1px solid var(--line); background: var(--panel-2); }
+  .insight-card.concern { border-left: 3px solid var(--red); }
+  .insight-card.good { border-left: 3px solid var(--green); }
+  .insight-card.neutral { border-left: 3px solid var(--amber); }
+  .insight-card.perfect { border-left: 3px solid var(--green); }
+  .insight-icon { font-size: 16px; flex-shrink: 0; margin-top: 1px; }
   .insight-title { font-weight: 600; font-size: 13.5px; margin-bottom: 4px; }
-  .insight-explanation { font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
-  .insight-confidence { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--ink-faint); background: var(--panel); border: 1px solid var(--line); padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 9px; letter-spacing: 0.04em; }
-  .no-insights { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); text-align: center; padding: 22px; }
+  .insight-explanation { font-size: 12.5px; color: var(--text-dim); line-height: 1.55; }
+  .insight-confidence { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--text-dim); background: var(--panel); border: 1px solid var(--line); padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 8px; }
+  .no-insights { font-family: var(--mono); font-size: 12px; color: var(--text-dim); text-align: center; padding: 20px; }
 
-  /* ---------- Checklist rows (pulled from the Haven Diagnostics
-     reference) — used for Setup Audit specifically. A pass/fail
-     criteria list reads faster than a stack of cards when every row is
-     the same shape of thing (a check that either passed or didn't). */
-  .checklist-row { display: flex; align-items: flex-start; gap: 11px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
-  .checklist-row:last-child { border-bottom: none; }
-  .checklist-mark { width: 18px; height: 18px; border-radius: 50%; background: var(--rust-tint); color: var(--rust); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 1px; }
-  .checklist-row .checklist-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
-  .checklist-row .checklist-explanation { font-size: 12px; color: var(--ink-dim); line-height: 1.55; }
-  .checklist-row .checklist-path { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px; }
-
-  /* ---------- Forecast rings (pulled from the Haven Diagnostics
-     reference) — three checkpoints of the same pacing math, side by
-     side, instead of one bar. Hand-rolled SVG, no chart library. */
-  .forecast-rings { display: flex; gap: 20px; justify-content: space-around; padding: 6px 0 2px; }
-  .forecast-ring-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
-  .forecast-ring-label { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
-  .forecast-ring-pct { font-family: var(--display); font-size: 15px; font-weight: 700; }
-
-  /* ---------- Tree rows ---------- */
+  /* Tree rows */
   .tree-row { cursor: default; }
   .tree-row.expandable { cursor: pointer; }
   .tree-row.level-campaign { background: var(--panel-2); font-weight: 600; }
-  .tree-row.level-campaign:hover { background: var(--panel-3); }
-  .tree-row.level-adset td { font-size: 12px; color: var(--ink); }
-  .tree-row.level-adset { background: rgba(30,27,38,0.012); }
-  .tree-row.level-adset:hover { background: rgba(30,27,38,0.025); }
-  .tree-row.level-ad td { font-size: 11.5px; color: var(--ink-dim); }
-  .tree-toggle { display: inline-block; width: 14px; color: var(--ink-faint); font-size: 9px; transition: transform 0.15s; }
+  .tree-row.level-adset td { font-size: 12px; color: var(--text); }
+  .tree-row.level-ad td { font-size: 11.5px; color: var(--text-dim); }
+  .tree-row.level-adset { background: rgba(255,255,255,0.015); }
+  .tree-toggle { display: inline-block; width: 14px; color: var(--text-dim); font-size: 9px; transition: transform 0.15s; }
   .tree-toggle.open { transform: rotate(90deg); }
-  .tree-name-cell { display: flex; align-items: center; gap: 7px; }
+  .tree-name-cell { display: flex; align-items: center; gap: 6px; }
   .tree-indent-1 { padding-left: 22px; }
   .tree-indent-2 { padding-left: 44px; }
 
-  .insight-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10.5px; padding: 4px 10px; border-radius: 20px; cursor: pointer; white-space: nowrap; }
-  .insight-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
-  .insight-badge.concern { background: var(--rust-tint); color: var(--rust); }
-  .insight-badge.concern::before { background: var(--rust); }
-  .insight-badge.good, .insight-badge.perfect { background: var(--sage-tint); color: var(--sage); }
-  .insight-badge.good::before, .insight-badge.perfect::before { background: var(--sage); }
-  .insight-badge.neutral { background: var(--brass-tint); color: var(--brass); }
-  .insight-badge.neutral::before { background: var(--brass); }
-  .insight-badge.unknown { background: var(--panel-3); color: var(--ink-faint); }
-  .insight-badge.unknown::before { border: 1px solid var(--ink-faint); background: transparent; }
-  .insight-detail-row td { background: var(--panel-2); padding: 11px 17px; font-size: 12px; color: var(--ink-dim); line-height: 1.65; border-bottom: 1px solid var(--line); }
-  .insight-detail-row .conf-tag { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--ink-faint); background: var(--panel); border: 1px solid var(--line); padding: 2px 7px; border-radius: 4px; margin-left: 8px; }
-
-  .table-controls { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
-  .search-input { font-family: var(--body); font-size: 12.5px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); padding: 9px 13px; border-radius: 7px; flex: 1; min-width: 160px; }
-  .search-input::placeholder { color: var(--ink-faint); }
-  .status-select { font-family: var(--mono); font-size: 11px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-dim); padding: 9px 11px; border-radius: 7px; }
-
+  .insight-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; padding: 3px 9px; border-radius: 20px; cursor: pointer; white-space: nowrap; }
+  .insight-badge.concern { background: rgba(229,115,115,0.12); color: var(--red); }
+  .insight-badge.good { background: rgba(111,207,151,0.12); color: var(--green); }
+  .insight-badge.neutral { background: rgba(232,161,60,0.12); color: var(--amber); }
+  .insight-badge.perfect { background: rgba(111,207,151,0.1); color: var(--green); }
+  .insight-badge.unknown { background: rgba(146,140,126,0.1); color: var(--text-dim); }
+  .insight-detail-row td { background: var(--panel-2); padding: 10px 16px; font-size: 12px; color: var(--text-dim); line-height: 1.6; border-bottom: 1px solid var(--line); }
+  .insight-detail-row .conf-tag { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--text-dim); background: var(--panel); border: 1px solid var(--line); padding: 2px 7px; border-radius: 4px; margin-left: 8px; }
+  .table-controls { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+  .search-input { font-family: var(--body); font-size: 12.5px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); padding: 8px 12px; border-radius: 6px; flex: 1; min-width: 160px; }
+  .status-select { font-family: var(--mono); font-size: 11px; background: var(--panel-2); border: 1px solid var(--line); color: var(--text-dim); padding: 8px 10px; border-radius: 6px; }
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; padding: 9px 10px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
-  th:hover { color: var(--brass); }
-  td { padding: 11px 10px; font-size: 12.5px; border-bottom: 1px solid var(--line-soft); }
+  th { text-align: left; font-family: var(--mono); font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.04em; padding: 8px 9px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
+  th:hover { color: var(--amber); }
+  td { padding: 10px 9px; font-size: 12.5px; border-bottom: 1px solid var(--line); }
   tr:last-child td { border-bottom: none; }
-  .plat-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; color: var(--ink-faint); }
+  .plat-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; color: var(--text-dim); }
   .plat-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
-  .status-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .status-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; }
   .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
-  .status-badge.active .dot { background: var(--sage); }
-  .status-badge.active { color: var(--sage); }
-  .status-badge.paused .dot { background: var(--ink-faint); }
-  .status-badge.paused { color: var(--ink-faint); }
-  .num-cell { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .status-badge.active .dot { background: var(--green); }
+  .status-badge.active { color: var(--green); }
+  .status-badge.paused .dot { background: var(--text-dim); }
+  .status-badge.paused { color: var(--text-dim); }
+  .num-cell { font-family: var(--mono); text-align: right; }
   .campaign-name-cell { font-weight: 500; }
-
-  .empty-state { text-align: center; padding: 80px 20px; color: var(--ink-faint); font-family: var(--mono); font-size: 13px; }
-  .empty-state .big { font-family: var(--display); font-size: 18px; color: var(--ink); margin-bottom: 9px; font-weight: 600; }
-
-  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(30,27,38,0.4); align-items: center; justify-content: center; z-index: 10; }
+  .empty-state { text-align: center; padding: 70px 20px; color: var(--text-dim); font-family: var(--mono); font-size: 13px; }
+  .empty-state .big { font-family: var(--display); font-size: 17px; color: var(--text); margin-bottom: 8px; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); align-items: center; justify-content: center; z-index: 10; }
   .modal-overlay.open { display: flex; }
-  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px; width: 370px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(30,27,38,0.18); }
-  .modal h3 { font-family: var(--display); font-size: 17px; font-weight: 600; margin-bottom: 18px; }
-  .modal-hint { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); margin: -6px 0 12px; line-height: 1.55; }
-  .modal input, .modal textarea, .modal select { width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink); padding: 10px 12px; border-radius: 7px; font-family: var(--body); font-size: 13px; margin-bottom: 10px; }
-  .modal input::placeholder, .modal textarea::placeholder { color: var(--ink-faint); }
-  .modal input:focus, .modal textarea:focus, .modal select:focus { border-color: var(--brass); }
-  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
-  .modal-actions button { font-family: var(--body); font-size: 13px; font-weight: 600; padding: 9px 17px; border-radius: 7px; border: none; cursor: pointer; }
-  .btn-cancel { background: transparent; color: var(--ink-faint); }
-  .btn-cancel:hover { color: var(--ink); }
-  .btn-save { background: var(--brass); color: #fff; }
-  .btn-save:hover { background: var(--brass-bright); }
-  .syncing-overlay { text-align: center; padding: 70px; font-family: var(--mono); color: var(--brass); font-size: 12px; }
-  .syncing-overlay::before { content: ''; display: block; width: 20px; height: 20px; margin: 0 auto 14px; border-radius: 50%; border: 2px solid var(--brass-tint); border-top-color: var(--brass); animation: watch-spin 0.8s linear infinite; }
-
-  @keyframes watch-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
-  @keyframes watch-spin { to { transform: rotate(360deg); } }
-
-  @media (max-width: 720px) {
-    .sidebar { position: static; height: auto; width: 100%; }
-    .app { flex-direction: column; }
-    .main { padding: 20px; }
-    .analytics-grid { grid-template-columns: 1fr; }
-    .forecast-rings { flex-wrap: wrap; }
-  }
-
-  /* ---------- Print / "Export Report" ---------- */
-  @media print {
-    .sidebar, .top-actions .sync-btn, .top-actions button[onclick*="openAccountModal"],
-    .top-actions button[onclick*="openGoalsModal"], .top-actions button[onclick*="openRulesModal"],
-    .top-actions button[onclick*="window.print"],
-    .view-tabs, .ctoggle-btn,
-    .range-row, .platform-tabs, .modal-overlay, .search-input, .status-select,
-    .chart-toggle { display: none !important; }
-    body { background: #fff; }
-    .main { padding: 0; }
-    .panel-block, .kpi-card, .insight-card, .portfolio-card { box-shadow: none; break-inside: avoid; }
-    canvas { max-height: 260px; }
-  }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 24px; width: 360px; box-shadow: 0 8px 32px rgba(20,22,31,0.16); }
+  .modal h3 { font-family: var(--display); font-size: 16px; margin-bottom: 16px; }
+  .modal-hint { font-family: var(--mono); font-size: 10.5px; color: var(--text-dim); margin: -6px 0 12px; line-height: 1.5; }
+  .modal input, .modal textarea, .modal select { width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--text); padding: 10px 12px; border-radius: 6px; font-family: var(--body); font-size: 13px; margin-bottom: 10px; }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 8px; }
+  .modal-actions button { font-family: var(--body); font-size: 13px; font-weight: 600; padding: 8px 16px; border-radius: 6px; border: none; cursor: pointer; }
+  .btn-cancel { background: transparent; color: var(--text-dim); }
+  .btn-save { background: var(--amber); color: #ffffff; }
+  .syncing-overlay { text-align: center; padding: 60px; font-family: var(--mono); color: var(--amber); font-size: 12px; }
 </style>
 </head>
 <body>
 <div class="app">
   <div class="sidebar">
     <div class="sidebar-head" onclick="showPortfolio()">
-      <div class="brand"><span class="brand-mark"></span>ARGUS <span>PULSE</span></div>
+      <div class="brand">ARGUS <span>PULSE</span></div>
       <div class="brand-sub">AD PERFORMANCE COMMAND CENTER</div>
     </div>
     <div class="client-nav">
@@ -329,38 +194,9 @@
     </div>
     <div class="sidebar-foot">
       <button class="add-client-btn" onclick="openClientModal()">+ Add Client</button>
-      <div id="user-footer" style="margin-top:10px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);display:flex;justify-content:space-between;align-items:center;"></div>
     </div>
   </div>
   <div class="main" id="main-content"></div>
-</div>
-
-<div class="modal-overlay" id="auth-gate">
-  <div class="modal">
-    <h3 id="auth-title">Sign in</h3>
-    <div class="modal-hint" id="auth-hint">ARGUS Pulse — this account only exists on this machine.</div>
-    <input type="text" id="auth-username" placeholder="Username" autocomplete="username">
-    <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password">
-    <div class="modal-hint" id="auth-error" style="color:var(--rust);display:none;"></div>
-    <div class="modal-actions" style="justify-content:stretch;">
-      <button class="btn-save" style="flex:1;" id="auth-submit-btn" onclick="submitAuth()">Sign in</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="users-modal-overlay">
-  <div class="modal">
-    <h3>Manage Users</h3>
-    <div id="users-list" style="margin-bottom:14px;"></div>
-    <div class="modal-hint">Add a teammate — every user sees every client, no per-client access scoping yet.</div>
-    <input type="text" id="new-user-username" placeholder="Username">
-    <input type="password" id="new-user-password" placeholder="Password (8+ chars)">
-    <select id="new-user-role"><option value="member">Member</option><option value="admin">Admin</option></select>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeUsersModal()">Close</button>
-      <button class="btn-save" onclick="addUser()">Add User</button>
-    </div>
-  </div>
 </div>
 
 <div class="modal-overlay" id="client-modal-overlay">
@@ -385,15 +221,11 @@
     </select>
     <input type="text" id="new-account-id" placeholder="Account ID (leave blank for demo data)">
     <input type="text" id="new-account-label" placeholder="Label e.g. Main account">
-    <input type="text" id="new-account-token" placeholder="Access token (optional — for Meta, or Google's manual-paste mode)">
+    <input type="text" id="new-account-token" placeholder="Access token (optional — real data)">
     <div id="google-fields" style="display:none;">
       <input type="text" id="new-account-dev-token" placeholder="Google Ads Developer Token">
       <input type="text" id="new-account-manager-id" placeholder="Manager (MCC) Customer ID">
-      <div class="modal-hint">Auto-renewing sync (recommended) — fill these three instead of Access token above, and sync keeps working unattended:</div>
-      <input type="text" id="new-account-client-id" placeholder="Google OAuth Client ID">
-      <input type="text" id="new-account-client-secret" placeholder="Google OAuth Client Secret">
-      <input type="text" id="new-account-refresh-token" placeholder="Google OAuth Refresh Token">
-      <div class="modal-hint">Or skip these and paste a manual Access token above — works too, but expires hourly and needs re-pasting before each sync.</div>
+      <div class="modal-hint">Google access tokens expire hourly — you'll need to paste a fresh one before each sync until the refresh-token flow is built.</div>
     </div>
     <div class="modal-hint" id="tiktok-hint" style="display:none;">TikTok isn't connected to real data yet — this will always show demo numbers regardless of what you enter.</div>
     <div class="modal-hint">Leave Account ID + Token empty → demo data. Fill both (+ Google's extra fields) → pulls real numbers.</div>
@@ -404,62 +236,16 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="goals-modal-overlay">
-  <div class="modal">
-    <h3>Goals & Budget</h3>
-    <div class="modal-hint">Optional — leave blank to skip. Setting these lets insights compare this client against what THEY care about, not a generic threshold.</div>
-    <input type="number" step="0.01" id="goal-target-cpa" placeholder="Target CPA (₹)">
-    <input type="number" step="0.01" id="goal-target-roas" placeholder="Target ROAS (e.g. 4)">
-    <input type="number" step="1" id="goal-monthly-budget" placeholder="Monthly ad budget (₹)">
-    <div class="modal-hint">Monthly budget enables pacing — "on track / over / under" vs how far through the month you are.</div>
-    <input type="text" id="goal-webhook-url" placeholder="Slack/Discord webhook URL (optional)">
-    <div class="modal-hint">Get pinged automatically when the daily auto-sync (6am) finds a concern — no need to open the dashboard. Leave blank to skip.</div>
-    <input type="number" step="0.1" id="goal-management-fee-pct" placeholder="Management fee (% of spend, optional)">
-    <div class="modal-hint">Shows your billable fee for the period next to spend — one flat %, not tiered.</div>
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeGoalsModal()">Cancel</button>
-      <button class="btn-save" onclick="saveGoals()">Save</button>
-    </div>
-  </div>
-</div>
-
-<div class="modal-overlay" id="rules-modal-overlay">
-  <div class="modal">
-    <h3>Rules</h3>
-    <div class="modal-hint">Recommend-only — a triggered rule shows up as a recommended action for a human to review. ARGUS never pauses a campaign or changes a budget on its own.</div>
-    <div id="rules-list" style="margin-bottom:14px;"></div>
-    <input type="text" id="rule-name" placeholder="Name (optional)">
-    <select id="rule-metric">
-      <option value="cpa">CPA</option>
-      <option value="roas">ROAS</option>
-      <option value="ctr">CTR</option>
-      <option value="frequency">Frequency</option>
-      <option value="spend">Spend</option>
-      <option value="conversions">Conversions</option>
-    </select>
-    <select id="rule-operator">
-      <option value=">">is greater than</option>
-      <option value="<">is less than</option>
-    </select>
-    <input type="number" step="0.01" id="rule-value" placeholder="Threshold value">
-    <input type="text" id="rule-action" placeholder="Recommended action (e.g. \"Pause this ad set\")">
-    <div class="modal-actions">
-      <button class="btn-cancel" onclick="closeRulesModal()">Close</button>
-      <button class="btn-save" onclick="addRule()">Add Rule</button>
-    </div>
-  </div>
-</div>
-
 <script>
   let clients = [];
   let activeClientId = null;
-  let trendChart = null, donutChart = null, radarChart = null;
+  let trendChart = null, donutChart = null;
   let sortKey = 'spend', sortDir = -1;
   let currentRange = 30;
   let activePlatformTab = 'all';
   let trendMetricPair = 'spend_revenue';
   let currentView = 'overview';
-  const PLATFORM_COLORS = { meta: '#4a6fa8', google: '#a3841f', tiktok: '#a24b6b' };
+  const PLATFORM_COLORS = { meta: '#2563eb', google: '#eab308', tiktok: '#e11d48' };
 
   function fmtMoney(n) {
     if (n === null || n === undefined) return '—';
@@ -516,7 +302,7 @@
   function renderSidebar() {
     const list = document.getElementById('client-nav-list');
     if (!clients.length) {
-      list.innerHTML = '<div style="padding:10px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);">No clients yet</div>';
+      list.innerHTML = '<div style="padding:10px;font-family:var(--mono);font-size:11px;color:var(--text-dim);">No clients yet</div>';
       return;
     }
     list.innerHTML = clients.map(c => `
@@ -608,9 +394,6 @@
           <div class="client-title-meta">${client.notes ? escapeHtml(client.notes) : 'No notes yet'}</div>
         </div>
         <div class="top-actions">
-          <button class="manage-btn" onclick="window.print()">Export Report</button>
-          <button class="manage-btn" onclick="openGoalsModal(${client.id})">Goals</button>
-          <button class="manage-btn" onclick="openRulesModal(${client.id})">Rules</button>
           <button class="manage-btn" onclick="openAccountModal(${client.id})">+ Ad Account</button>
           <button class="sync-btn" onclick="syncAllAccounts(${client.id})">↻ Sync All</button>
         </div>
@@ -626,7 +409,7 @@
       </div>
       <div class="accounts-strip">
         ${summary.accounts.length ? summary.accounts.map(a => `
-          <div class="account-pill">${platDot(a.platform)}${escapeHtml(a.label)} · ${a.last_sync_mode === 'live' ? '<span style="color:var(--sage)">live</span>' : a.last_sync_mode === 'mock' ? '<span>demo</span>' : '<span style="color:var(--ink-faint)">unsynced</span>'} · ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}</div>
+          <div class="account-pill">${platDot(a.platform)}${escapeHtml(a.label)} · ${a.last_sync_mode === 'live' ? '<span style="color:var(--green)">live</span>' : a.last_sync_mode === 'mock' ? '<span>demo</span>' : '<span style="color:var(--text-dim)">unsynced</span>'} · ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}</div>
         `).join('') : '<div class="account-pill">No ad accounts connected yet</div>'}
       </div>
       <div class="view-tabs">
@@ -657,11 +440,8 @@
 
   function renderOverviewView() {
     const el = document.getElementById('view-overview');
-    const summary = window._summary, client = window._client;
-    const { attention } = collectFlatInsights(summary.campaigns);
+    const { attention } = collectFlatInsights(window._summary.campaigns);
     const topIssues = attention.slice(0, 3);
-    const auditItems = summary.campaigns.filter(c => c.auditFindings && c.auditFindings.length)
-      .flatMap(c => c.auditFindings.map(f => ({ campaign: c.name, ...f })));
 
     el.innerHTML = `
       <div id="kpi-groups"></div>
@@ -671,28 +451,6 @@
           <div id="brand-insight"></div>
         </div>
       </div>
-      ${(summary.goalInsight || summary.pacing || summary.managementFee) ? `
-        <div class="insights-panel">
-          <div class="panel-block">
-            <div class="panel-title-row"><div class="panel-title">Goals & Pacing</div><div class="ctoggle-btn" onclick="openGoalsModal(${client.id})">Edit</div></div>
-            ${summary.goalInsight ? `
-              <div class="insight-card ${summary.goalInsight.severity}" style="margin-bottom:${summary.pacing || summary.managementFee ? '10px' : '0'};">
-                <div class="insight-icon"></div>
-                <div>
-                  <div class="insight-title">${escapeHtml(summary.goalInsight.title)}</div>
-                  <div class="insight-explanation">${escapeHtml(summary.goalInsight.explanation)}</div>
-                </div>
-              </div>
-            ` : ''}
-            ${summary.pacing ? renderPacing(summary.pacing) : ''}
-            ${summary.managementFee ? `
-              <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim);${summary.pacing ? 'margin-top:10px;padding-top:10px;border-top:1px solid var(--line);' : ''}">
-                Management fee (${summary.managementFee.pct}% of period spend): <span style="color:var(--brass);">${fmtMoney(summary.managementFee.amount)}</span>
-              </div>
-            ` : ''}
-          </div>
-        </div>
-      ` : ''}
       ${topIssues.length ? `
         <div class="insights-panel">
           <div class="panel-block">
@@ -702,29 +460,11 @@
             </div>
             ${topIssues.map(item => `
               <div class="insight-card ${item.node.insight.severity}">
-                <div class="insight-icon"></div>
+                <div class="insight-icon">${SEVERITY_ICON2[item.node.insight.severity]}</div>
                 <div>
                   <div class="attention-path">${item.level} · ${item.path.map(escapeHtml).join(' → ')}</div>
                   <div class="insight-title">${escapeHtml(item.node.insight.title)}</div>
                   <div class="insight-explanation">${escapeHtml(item.node.insight.explanation)}</div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
-      ${renderRecommendedActions(summary.recommendedActions || [])}
-      ${auditItems.length ? `
-        <div class="insights-panel">
-          <div class="panel-block">
-            <div class="panel-title-row"><div class="panel-title">Setup Audit — configuration &amp; tracking issues</div></div>
-            ${auditItems.map(item => `
-              <div class="checklist-row">
-                <div class="checklist-mark">✕</div>
-                <div>
-                  <div class="checklist-path">Campaign · ${escapeHtml(item.campaign)}</div>
-                  <div class="checklist-title">${escapeHtml(item.title)}</div>
-                  <div class="checklist-explanation">${escapeHtml(item.explanation)}</div>
                 </div>
               </div>
             `).join('')}
@@ -738,21 +478,14 @@
             <div class="chart-toggle">
               <div class="ctoggle-btn ${trendMetricPair === 'spend_revenue' ? 'active' : ''}" onclick="setTrendPair('spend_revenue')">Spend / Revenue</div>
               <div class="ctoggle-btn ${trendMetricPair === 'clicks_conversions' ? 'active' : ''}" onclick="setTrendPair('clicks_conversions')">Clicks / Conv.</div>
-              ${(client.target_cpa || client.target_roas) ? `<div class="ctoggle-btn ${trendMetricPair === 'vs_goal' ? 'active' : ''}" onclick="setTrendPair('vs_goal')">vs Goal</div>` : ''}
             </div>
           </div>
           <canvas id="trend-chart"></canvas>
         </div>
-        <div style="display:flex;flex-direction:column;gap:14px;">
-          <div class="panel-block">
-            <div class="panel-title-row"><div class="panel-title">Spend by Platform</div></div>
-            <canvas id="donut-chart"></canvas>
-            <div class="donut-legend" id="donut-legend"></div>
-          </div>
-          <div class="panel-block">
-            <div class="panel-title-row"><div class="panel-title">Performance Radar — vs last period</div></div>
-            <canvas id="radar-chart"></canvas>
-          </div>
+        <div class="panel-block">
+          <div class="panel-title-row"><div class="panel-title">Spend by Platform</div></div>
+          <canvas id="donut-chart"></canvas>
+          <div class="donut-legend" id="donut-legend"></div>
         </div>
       </div>
     `;
@@ -760,7 +493,6 @@
     renderInsightCard(window._summary.brandInsight);
     renderTrendChart();
     renderDonutChart();
-    renderRadarChart();
   }
 
   // Walks the whole tree and flattens every concerning/neutral item (across
@@ -797,7 +529,7 @@
       const n = item.node;
       return `
         <div class="insight-card ${n.insight.severity}">
-          <div class="insight-icon"></div>
+          <div class="insight-icon">${SEVERITY_ICON2[n.insight.severity]}</div>
           <div style="flex:1;">
             <div class="attention-path">${item.level} · ${item.path.map(escapeHtml).join(' → ')}</div>
             <div class="insight-title">${escapeHtml(n.insight.title)}</div>
@@ -904,7 +636,7 @@
     const d = window._summary.deltas;
     const ts = window._summary.timeseries;
     const sv = window._summary.searchVisibilityAvg;
-    const spark = key => sparklineSvg(ts.map(r => r[key]), '#a97b28');
+    const spark = key => sparklineSvg(ts.map(r => r[key]), '#d97706');
 
     const outcomesGroup = { label: 'Outcomes', cards: [
       { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
@@ -972,13 +704,7 @@
       }
     }
 
-    document.getElementById('kpi-groups').innerHTML = `
-      <div class="hero-kpi" style="margin-bottom:14px;">
-        <div class="hero-kpi-label">Total Spend — this period</div>
-        <div class="hero-kpi-value">${fmtMoney(t.spend)}</div>
-        <div class="hero-kpi-delta">${d.spend !== null ? (d.spend >= 0 ? '▲' : '▼') + ' ' + Math.abs(d.spend).toFixed(1) + '% vs previous period' : 'No previous period to compare yet'}</div>
-      </div>
-    ` + groups.map(g => `
+    document.getElementById('kpi-groups').innerHTML = groups.map(g => `
       <div class="kpi-group">
         <div class="kpi-group-label">${g.label}</div>
         <div class="kpi-grid">
@@ -1000,7 +726,7 @@
     const el = document.getElementById('brand-insight');
     el.innerHTML = `
       <div class="insight-card ${insight.severity}">
-        <div class="insight-icon"></div>
+        <div class="insight-icon">${SEVERITY_ICON2[insight.severity]}</div>
         <div>
           <div class="insight-title">${escapeHtml(insight.title)}</div>
           ${insight.explanation ? `<div class="insight-explanation">${escapeHtml(insight.explanation)}</div>` : ''}
@@ -1011,9 +737,8 @@
   }
 
   function insightBadge(insight) {
-    // The pill's own ::before dot (see .insight-badge CSS) already carries
-    // severity — no need to double up with an emoji glyph too.
-    return `<span class="insight-badge ${insight.severity}">${escapeHtml(insight.title)}</span>`;
+    const icon = SEVERITY_ICON2[insight.severity];
+    return `<span class="insight-badge ${insight.severity}">${icon} ${escapeHtml(insight.title)}</span>`;
   }
 
   // Expand/collapse state, keyed by a unique path string per row so it
@@ -1143,7 +868,7 @@
     });
 
     if (!campaigns.length) {
-      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--ink-faint);font-family:var(--mono);padding:30px;">No campaigns match</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--text-dim);font-family:var(--mono);padding:30px;">No campaigns match</td></tr>`;
       return;
     }
     tbody.innerHTML = campaigns.map((c) => {
@@ -1156,58 +881,36 @@
 
   function renderTrendChart() {
     const ts = window._summary.timeseries;
-    const client = window._client;
     const ctx = document.getElementById('trend-chart');
     if (trendChart) trendChart.destroy();
-
-    let pairs, extraDatasets = [], tooltipFmt = fmtNum;
-    if (trendMetricPair === 'spend_revenue') {
-      pairs = [{ k: 'spend', label: 'Spend', color: '#a97b28' }, { k: 'revenue', label: 'Revenue', color: '#3f7a58' }];
-      tooltipFmt = fmtMoney;
-    } else if (trendMetricPair === 'clicks_conversions') {
-      pairs = [{ k: 'clicks', label: 'Clicks', color: '#4a6fa8' }, { k: 'conversions', label: 'Conversions', color: '#a97b28' }];
-    } else {
-      // "vs Goal" (pulled from the Drift reference) — actual metric plotted
-      // against a flat reference line for the client's own stated target,
-      // not just a number in a card. Prioritizes CPA if both targets are
-      // set, since it's the more commonly tracked of the two.
-      const useRoas = !client.target_cpa && client.target_roas;
-      const metricKey = useRoas ? 'roas' : 'cpa';
-      const targetVal = useRoas ? client.target_roas : client.target_cpa;
-      const label = useRoas ? 'ROAS' : 'CPA';
-      pairs = [{ k: metricKey, label: `Actual ${label}`, color: '#a97b28' }];
-      extraDatasets = [{
-        label: `Target ${label}`, data: ts.map(() => targetVal), borderColor: '#9b96a5',
-        borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0, yAxisID: 'y',
-      }];
-      tooltipFmt = useRoas ? (v) => v.toFixed(2) + 'x' : fmtMoney;
-    }
-
+    const pairs = trendMetricPair === 'spend_revenue'
+      ? [{ k: 'spend', label: 'Spend', color: '#d97706' }, { k: 'revenue', label: 'Revenue', color: '#16a34a' }]
+      : [{ k: 'clicks', label: 'Clicks', color: '#2563eb' }, { k: 'conversions', label: 'Conversions', color: '#d97706' }];
     trendChart = new Chart(ctx, {
       type: 'line',
       data: {
         labels: ts.map(t => t.date),
-        datasets: [
-          ...pairs.map((p, i) => ({
-            label: p.label, data: ts.map(t => t[p.k]), borderColor: p.color,
-            backgroundColor: i === 0 ? p.color + '1f' : 'transparent', fill: i === 0, tension: 0.3,
-            yAxisID: (trendMetricPair !== 'vs_goal' && i === 1) ? 'y1' : 'y',
-          })),
-          ...extraDatasets,
-        ],
+        datasets: pairs.map((p, i) => ({
+          label: p.label, data: ts.map(t => t[p.k]), borderColor: p.color,
+          backgroundColor: i === 0 ? p.color + '15' : 'transparent', fill: i === 0, tension: 0.3, yAxisID: i === 0 ? 'y' : 'y1',
+        })),
       },
       options: {
         responsive: true, interaction: { mode: 'index', intersect: false },
         scales: {
-          x: { ticks: { color: '#9b96a5', maxTicksLimit: 10 }, grid: { color: '#ececee' } },
-          y: { position: 'left', ticks: { color: '#9b96a5' }, grid: { color: '#ececee' } },
-          y1: { position: 'right', ticks: { color: '#9b96a5' }, grid: { display: false } },
+          x: { ticks: { color: '#6b7280', maxTicksLimit: 10 }, grid: { color: '#eef0f5' } },
+          y: { position: 'left', ticks: { color: '#6b7280' }, grid: { color: '#eef0f5' } },
+          y1: { position: 'right', ticks: { color: '#6b7280' }, grid: { display: false } },
         },
         plugins: {
-          legend: { labels: { color: '#1e1b26', font: { family: 'IBM Plex Sans' } } },
+          legend: { labels: { color: '#14161f', font: { family: 'Inter' } } },
           tooltip: {
             callbacks: {
-              label: (ctx) => `${ctx.dataset.label}: ${tooltipFmt(ctx.parsed.y)}`,
+              label: (ctx) => {
+                const val = ctx.parsed.y;
+                const formatted = trendMetricPair === 'spend_revenue' ? fmtMoney(val) : fmtNum(val);
+                return `${ctx.dataset.label}: ${formatted}`;
+              },
             },
           },
         },
@@ -1223,7 +926,7 @@
     const ctx = document.getElementById('donut-chart');
     if (donutChart) donutChart.destroy();
     if (!labels.length) {
-      document.getElementById('donut-legend').innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-align:center;">No spend data yet</div>`;
+      document.getElementById('donut-legend').innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--text-dim);text-align:center;">No spend data yet</div>`;
       return;
     }
     donutChart = new Chart(ctx, {
@@ -1258,57 +961,6 @@
     `).join('');
   }
 
-  // Radar reads this period as a ratio to last period on each axis, not
-  // an absolute scale — reuses the same totals/deltas the KPI cards
-  // already have, just as a shape instead of four separate numbers.
-  // 50 = flat vs last period, 100 = doubled, 0 = zero. The dashed ring
-  // at 50 is the "same as last period" reference — anything bulging past
-  // it improved, anything pulled in shrank.
-  function renderRadarChart() {
-    const d = window._summary.deltas;
-    const ctx = document.getElementById('radar-chart');
-    if (radarChart) radarChart.destroy();
-    // pctChange-style deltas are already period-over-period % — convert
-    // to the radar's 50=flat scale. CPA is inverted (lower is better) so
-    // "improving" always means "bulging outward" on every axis alike.
-    const toRadarVal = (deltaPct, invert) => {
-      if (deltaPct === null || deltaPct === undefined) return 50;
-      const signed = invert ? -deltaPct : deltaPct;
-      return Math.max(0, Math.min(100, 50 + signed / 2));
-    };
-    const axes = [
-      { label: 'CTR', val: toRadarVal(d.ctr, false) },
-      { label: 'ROAS', val: toRadarVal(d.roas, false) },
-      { label: 'CPA Efficiency', val: toRadarVal(d.cpa, true) },
-      { label: 'Conversions', val: toRadarVal(d.conversions, false) },
-    ];
-    radarChart = new Chart(ctx, {
-      type: 'radar',
-      data: {
-        labels: axes.map(a => a.label),
-        datasets: [{
-          label: 'This period', data: axes.map(a => a.val),
-          borderColor: '#a97b28', backgroundColor: 'rgba(169,123,40,0.15)', pointBackgroundColor: '#a97b28',
-        }, {
-          label: 'Same as last period', data: axes.map(() => 50),
-          borderColor: '#d8d5db', borderDash: [4, 4], pointRadius: 0, backgroundColor: 'transparent',
-        }],
-      },
-      options: {
-        scales: {
-          r: {
-            min: 0, max: 100, ticks: { display: false }, grid: { color: '#ececee' },
-            pointLabels: { color: '#6b6577', font: { family: 'IBM Plex Mono', size: 10 } },
-          },
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: { callbacks: { label: (ctx) => ctx.dataset.label === 'This period' ? `${ctx.label}: ${ctx.parsed.r > 50 ? 'improving' : ctx.parsed.r < 50 ? 'declining' : 'flat'} vs last period` : '' } },
-        },
-      },
-    });
-  }
-
   function setRange(days) {
     currentRange = days;
     if (activeClientId) loadAndRenderSummary(); else showPortfolio();
@@ -1340,162 +992,6 @@
   let accountModalClientId = null;
   function openAccountModal(clientId) { accountModalClientId = clientId; document.getElementById('account-modal-overlay').classList.add('open'); toggleGoogleFields(); }
   function closeAccountModal() { document.getElementById('account-modal-overlay').classList.remove('open'); }
-
-  let goalsModalClientId = null;
-  function openGoalsModal(clientId) {
-    goalsModalClientId = clientId;
-    const c = clients.find(c => c.id === clientId) || window._client;
-    document.getElementById('goal-target-cpa').value = c && c.target_cpa != null ? c.target_cpa : '';
-    document.getElementById('goal-target-roas').value = c && c.target_roas != null ? c.target_roas : '';
-    document.getElementById('goal-monthly-budget').value = c && c.monthly_budget != null ? c.monthly_budget : '';
-    document.getElementById('goal-webhook-url').value = c && c.webhook_url ? c.webhook_url : '';
-    document.getElementById('goal-management-fee-pct').value = c && c.management_fee_pct != null ? c.management_fee_pct : '';
-    document.getElementById('goals-modal-overlay').classList.add('open');
-  }
-  function closeGoalsModal() { document.getElementById('goals-modal-overlay').classList.remove('open'); }
-  async function saveGoals() {
-    const target_cpa = document.getElementById('goal-target-cpa').value.trim();
-    const target_roas = document.getElementById('goal-target-roas').value.trim();
-    const monthly_budget = document.getElementById('goal-monthly-budget').value.trim();
-    const webhook_url = document.getElementById('goal-webhook-url').value.trim();
-    const management_fee_pct = document.getElementById('goal-management-fee-pct').value.trim();
-    await fetch(`/api/clients/${goalsModalClientId}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        target_cpa: target_cpa === '' ? null : target_cpa,
-        target_roas: target_roas === '' ? null : target_roas,
-        monthly_budget: monthly_budget === '' ? null : monthly_budget,
-        webhook_url: webhook_url === '' ? null : webhook_url,
-        management_fee_pct: management_fee_pct === '' ? null : management_fee_pct,
-      }),
-    });
-    closeGoalsModal();
-    await loadClients();
-    selectClient(goalsModalClientId);
-  }
-
-  // Renders the pacing bar + status line for the Goals & Pacing panel.
-  // Hand-rolled SVG ring, no chart library — stroke-dasharray trick for
-  // a circular progress indicator. Small enough to inline three of them.
-  function forecastRingSvg(pct, color) {
-    const clamped = Math.max(0, Math.min(100, pct));
-    const r = 24, circ = 2 * Math.PI * r;
-    const offset = circ * (1 - clamped / 100);
-    return `<svg width="60" height="60" viewBox="0 0 60 60">
-      <circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--panel-3)" stroke-width="6"/>
-      <circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="6"
-        stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"
-        transform="rotate(-90 30 30)" style="transition:stroke-dashoffset 0.4s;"/>
-    </svg>`;
-  }
-
-  // Three checkpoints of the same pacing math side by side (pulled from
-  // the Haven Diagnostics reference) instead of one bar — budget used,
-  // month elapsed, and where spend is headed if the current rate holds.
-  function renderPacing(p) {
-    const paceColor = p.status === 'overpacing' ? 'var(--rust)' : p.status === 'underpacing' ? 'var(--google)' : 'var(--sage)';
-    const label = p.status === 'overpacing' ? 'Overpacing' : p.status === 'underpacing' ? 'Underpacing' : 'On track';
-    const projectedPct = (p.projectedSpend / p.monthlyBudget) * 100;
-    return `
-      <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-bottom:12px;">
-        Day ${p.dayOfMonth} of ${p.daysInMonth} · ${fmtMoney(p.spendMTD)} of ${fmtMoney(p.monthlyBudget)} spent · <span style="color:${paceColor};font-weight:600;">${label}</span>
-      </div>
-      <div class="forecast-rings">
-        <div class="forecast-ring-item">
-          ${forecastRingSvg(p.pctOfBudgetUsed, 'var(--brass)')}
-          <div class="forecast-ring-pct">${p.pctOfBudgetUsed.toFixed(0)}%</div>
-          <div class="forecast-ring-label">Budget used</div>
-        </div>
-        <div class="forecast-ring-item">
-          ${forecastRingSvg(p.pctOfMonthElapsed, 'var(--ink-faint)')}
-          <div class="forecast-ring-pct">${p.pctOfMonthElapsed.toFixed(0)}%</div>
-          <div class="forecast-ring-label">Month elapsed</div>
-        </div>
-        <div class="forecast-ring-item">
-          ${forecastRingSvg(projectedPct, paceColor)}
-          <div class="forecast-ring-pct" style="color:${paceColor};">${projectedPct.toFixed(0)}%</div>
-          <div class="forecast-ring-label">Projected month-end</div>
-        </div>
-      </div>
-    `;
-  }
-
-  // ---------- Rules & recommended actions ----------
-  let rulesModalClientId = null;
-  function openRulesModal(clientId) {
-    rulesModalClientId = clientId;
-    renderRulesList();
-    document.getElementById('rules-modal-overlay').classList.add('open');
-  }
-  function closeRulesModal() { document.getElementById('rules-modal-overlay').classList.remove('open'); }
-
-  async function renderRulesList() {
-    const rules = await (await fetch(`/api/clients/${rulesModalClientId}/rules`)).json();
-    document.getElementById('rules-list').innerHTML = rules.length ? rules.map(r => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px;">
-        <span>${escapeHtml(r.name)} <span style="color:var(--ink-faint);font-family:var(--mono);">→ ${escapeHtml(r.action)}</span></span>
-        <span style="cursor:pointer;color:var(--rust);font-family:var(--mono);font-size:10px;" onclick="removeRule(${r.id})">remove</span>
-      </div>
-    `).join('') : `<div class="modal-hint">No rules yet.</div>`;
-  }
-
-  async function addRule() {
-    const name = document.getElementById('rule-name').value.trim();
-    const metric = document.getElementById('rule-metric').value;
-    const operator = document.getElementById('rule-operator').value;
-    const value = document.getElementById('rule-value').value.trim();
-    const action = document.getElementById('rule-action').value.trim();
-    if (!value) { alert('Threshold value required'); return; }
-    const res = await fetch(`/api/clients/${rulesModalClientId}/rules`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name, metric, operator, value, action: action || 'Review this campaign' }),
-    });
-    if (!res.ok) { alert((await res.json()).error); return; }
-    document.getElementById('rule-name').value = '';
-    document.getElementById('rule-value').value = '';
-    document.getElementById('rule-action').value = '';
-    renderRulesList();
-  }
-
-  async function removeRule(id) {
-    await fetch(`/api/rules/${id}`, { method: 'DELETE' });
-    renderRulesList();
-  }
-
-  async function resolveAction(id, status) {
-    await fetch(`/api/actions/${id}/resolve`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    });
-    selectClient(activeClientId);
-  }
-
-  function renderRecommendedActions(actions) {
-    if (!actions.length) return '';
-    return `
-      <div class="insights-panel">
-        <div class="panel-block">
-          <div class="panel-title-row"><div class="panel-title">Recommended Actions — from your rules</div></div>
-          ${actions.map(a => `
-            <div class="insight-card neutral" style="margin-bottom:8px;justify-content:space-between;">
-              <div style="display:flex;gap:13px;">
-                <div class="insight-icon"></div>
-                <div>
-                  <div class="insight-title">${escapeHtml(a.action)}</div>
-                  <div class="insight-explanation">${escapeHtml(a.message)}</div>
-                </div>
-              </div>
-              <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0;">
-                <span style="cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--sage);" onclick="resolveAction(${a.id}, 'done')">done</span>
-                <span style="cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--ink-faint);" onclick="resolveAction(${a.id}, 'dismissed')">dismiss</span>
-              </div>
-            </div>
-          `).join('')}
-        </div>
-      </div>
-    `;
-  }
-
   function toggleGoogleFields() {
     const platform = document.getElementById('new-account-platform').value;
     document.getElementById('google-fields').style.display = platform === 'google' ? 'block' : 'none';
@@ -1509,9 +1005,6 @@
     const token = document.getElementById('new-account-token').value.trim();
     const devToken = document.getElementById('new-account-dev-token').value.trim();
     const managerId = document.getElementById('new-account-manager-id').value.trim();
-    const clientId = document.getElementById('new-account-client-id').value.trim();
-    const clientSecret = document.getElementById('new-account-client-secret').value.trim();
-    const refreshToken = document.getElementById('new-account-refresh-token').value.trim();
     const res = await (await fetch(`/api/clients/${accountModalClientId}/ad-accounts`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -1519,9 +1012,6 @@
         access_token: token || undefined,
         developer_token: devToken || undefined,
         manager_customer_id: managerId || undefined,
-        client_id: clientId || undefined,
-        client_secret: clientSecret || undefined,
-        refresh_token: refreshToken || undefined,
       }),
     })).json();
     document.getElementById('new-account-id').value = '';
@@ -1529,121 +1019,13 @@
     document.getElementById('new-account-token').value = '';
     document.getElementById('new-account-dev-token').value = '';
     document.getElementById('new-account-manager-id').value = '';
-    document.getElementById('new-account-client-id').value = '';
-    document.getElementById('new-account-client-secret').value = '';
-    document.getElementById('new-account-refresh-token').value = '';
     closeAccountModal();
     await fetch(`/api/ad-accounts/${res.id}/sync`, { method: 'POST' });
     await loadClients();
     selectClient(accountModalClientId);
   }
 
-  // ---------- Auth ----------
-  let currentUser = null;
-  let authMode = 'login'; // or 'setup'
-
-  async function boot() {
-    const { needed } = await (await fetch('/api/auth/setup-needed')).json();
-    if (needed) return showAuthGate('setup');
-    const meRes = await fetch('/api/auth/me');
-    if (meRes.status === 401) return showAuthGate('login');
-    currentUser = await meRes.json();
-    document.getElementById('auth-gate').classList.remove('open');
-    renderUserFooter();
-    loadClients().then(showPortfolio);
-  }
-
-  function showAuthGate(mode) {
-    authMode = mode;
-    document.getElementById('auth-title').textContent = mode === 'setup' ? 'Create your admin account' : 'Sign in';
-    document.getElementById('auth-hint').textContent = mode === 'setup'
-      ? 'First run — this creates the one admin account for this install. Runs locally, nothing leaves this machine.'
-      : 'ARGUS Pulse — this account only exists on this machine.';
-    document.getElementById('auth-submit-btn').textContent = mode === 'setup' ? 'Create account' : 'Sign in';
-    document.getElementById('auth-error').style.display = 'none';
-    document.getElementById('auth-gate').classList.add('open');
-  }
-
-  async function submitAuth() {
-    const username = document.getElementById('auth-username').value.trim();
-    const password = document.getElementById('auth-password').value;
-    const errEl = document.getElementById('auth-error');
-    errEl.style.display = 'none';
-    const res = await fetch(authMode === 'setup' ? '/api/auth/setup' : '/api/auth/login', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
-    });
-    const body = await res.json();
-    if (!res.ok) { errEl.textContent = body.error; errEl.style.display = 'block'; return; }
-    currentUser = body.user;
-    document.getElementById('auth-gate').classList.remove('open');
-    document.getElementById('auth-username').value = '';
-    document.getElementById('auth-password').value = '';
-    renderUserFooter();
-    loadClients().then(showPortfolio);
-  }
-
-  async function logout() {
-    await fetch('/api/auth/logout', { method: 'POST' });
-    currentUser = null;
-    showAuthGate('login');
-  }
-
-  function renderUserFooter() {
-    document.getElementById('user-footer').innerHTML = `
-      <span>${escapeHtml(currentUser.username)} · ${currentUser.role}</span>
-      <span style="display:flex;gap:10px;">
-        ${currentUser.role === 'admin' ? `<span style="cursor:pointer;" onclick="openUsersModal()">Users</span>` : ''}
-        <span style="cursor:pointer;" onclick="logout()">Logout</span>
-      </span>
-    `;
-  }
-
-  function openUsersModal() {
-    renderUsersList();
-    document.getElementById('users-modal-overlay').classList.add('open');
-  }
-  function closeUsersModal() { document.getElementById('users-modal-overlay').classList.remove('open'); }
-
-  async function renderUsersList() {
-    const users = await (await fetch('/api/auth/users')).json();
-    document.getElementById('users-list').innerHTML = users.map(u => `
-      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px;">
-        <span>${escapeHtml(u.username)} <span style="color:var(--ink-faint);font-family:var(--mono);font-size:10px;">${u.role}</span></span>
-        ${u.id !== currentUser.id ? `<span style="cursor:pointer;color:var(--rust);font-family:var(--mono);font-size:10px;" onclick="removeUser(${u.id})">remove</span>` : ''}
-      </div>
-    `).join('');
-  }
-
-  async function addUser() {
-    const username = document.getElementById('new-user-username').value.trim();
-    const password = document.getElementById('new-user-password').value;
-    const role = document.getElementById('new-user-role').value;
-    const res = await fetch('/api/auth/users', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password, role }),
-    });
-    if (!res.ok) { alert((await res.json()).error); return; }
-    document.getElementById('new-user-username').value = '';
-    document.getElementById('new-user-password').value = '';
-    renderUsersList();
-  }
-
-  async function removeUser(id) {
-    await fetch(`/api/auth/users/${id}`, { method: 'DELETE' });
-    renderUsersList();
-  }
-
-  // A 401 from any /api call (session expired, logged out elsewhere) drops
-  // straight back to the login gate instead of the app silently breaking.
-  const _origFetch = window.fetch;
-  window.fetch = async (...args) => {
-    const res = await _origFetch(...args);
-    if (res.status === 401 && !String(args[0]).includes('/api/auth/')) showAuthGate('login');
-    return res;
-  };
-
-  boot();
+  loadClients().then(showPortfolio);
 </script>
 </body>
 </html>
