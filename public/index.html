@@ -1,0 +1,1649 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ARGUS Pulse — Agency Ad Command Center</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  /* ============================================================
+     ARGUS PULSE — "The Watch", in daylight
+     Argus doesn't need darkness to watch — a hundred eyes exist for
+     visibility, not gloom. Same concept as before (the aperture status
+     motif, the brand mark), re-executed light: white cards on a cool
+     off-white ground, brass as the one warm accent against an otherwise
+     quiet neutral palette. Rebuilt after reviewing 7 reference dashboards
+     — every one of them was light-mode, which is the actual signal that
+     mattered more than any individual layout trick.
+     ============================================================ */
+  :root {
+    /* Ground: cool off-white, not the cream+warm-accent combination that
+       reads as an AI-generated default. Cards sit whiter than the ground
+       so structure reads from value contrast, not just borders. */
+    --bg: #f5f5f7;
+    --panel: #ffffff;
+    --panel-2: #fafafa;
+    --panel-3: #f0f0f2;
+    --line: #e4e3e7;
+    --line-soft: #ececee;
+
+    --ink: #1e1b26;
+    --ink-dim: #6b6577;
+    --ink-faint: #9b96a5;
+
+    /* Brass — the one warm, saturated color in the system. Darker/more
+       saturated here than the dark-mode version needed to be, since it
+       has to hold its own on white instead of glowing on black. */
+    --brass: #a97b28;
+    --brass-bright: #c4922f;
+    --brass-tint: #fbf1de;
+
+    --sage: #3f7a58;
+    --sage-tint: #e6f2ea;
+    --rust: #b8503a;
+    --rust-tint: #fbe9e4;
+
+    --meta: #4a6fa8;
+    --google: #a3841f;
+    --tiktok: #a24b6b;
+
+    --shadow-sm: 0 1px 2px rgba(30,27,38,0.04), 0 1px 6px rgba(30,27,38,0.05);
+    --shadow: 0 2px 4px rgba(30,27,38,0.04), 0 10px 24px rgba(30,27,38,0.07);
+
+    --display: 'Fraunces', serif;
+    --mono: 'IBM Plex Mono', monospace;
+    --body: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; -webkit-font-smoothing: antialiased; }
+  ::selection { background: var(--brass-tint); color: var(--brass); }
+  :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 3px; }
+
+  .app { display: flex; min-height: 100vh; }
+
+  /* ---------- Sidebar ---------- */
+  .sidebar { width: 256px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; }
+  .sidebar-head { padding: 22px 20px 18px; border-bottom: 1px solid var(--line); cursor: pointer; }
+  .brand { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; display: flex; align-items: center; gap: 8px; }
+  .brand-mark { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--brass); position: relative; flex-shrink: 0; }
+  .brand-mark::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--brass); }
+  .brand span { color: var(--brass); font-weight: 400; opacity: 0.75; }
+  .brand-sub { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); margin-top: 6px; letter-spacing: 0.09em; text-transform: uppercase; padding-left: 23px; }
+  .client-nav { flex: 1; overflow-y: auto; padding: 12px 10px; }
+  .client-nav-label { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); letter-spacing: 0.09em; padding: 8px 10px 8px; text-transform: uppercase; }
+  .client-item { display: flex; align-items: center; justify-content: space-between; padding: 10px 11px; border-radius: 8px; cursor: pointer; margin-bottom: 1px; font-size: 13px; font-weight: 500; color: var(--ink-dim); }
+  .client-item:hover { background: var(--panel-3); color: var(--ink); }
+  .client-item.active { background: var(--brass-tint); color: var(--brass); }
+  .client-item .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ink-faint); margin-right: 9px; flex-shrink: 0; display: inline-block; }
+  .client-item .dot.paused { background: var(--ink-faint); opacity: 0.5; }
+  .ci-left { display: flex; align-items: center; overflow: hidden; }
+  .ci-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ci-count { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); flex-shrink: 0; }
+  .sidebar-foot { padding: 16px; border-top: 1px solid var(--line); }
+  .add-client-btn { width: 100%; background: var(--brass-tint); color: var(--brass); border: 1px solid transparent; font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: 0.02em; padding: 11px; border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+  .add-client-btn:hover { background: #f5e6c8; }
+
+  /* ---------- Layout ---------- */
+  .main { flex: 1; min-width: 0; padding: 30px 38px 70px; }
+  .portfolio-head { display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; }
+  .portfolio-title { font-family: var(--display); font-size: 26px; font-weight: 600; letter-spacing: -0.01em; }
+  .portfolio-sub { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 5px; letter-spacing: 0.02em; }
+  .portfolio-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 14px; }
+
+  .portfolio-card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 18px; cursor: pointer; transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s; box-shadow: var(--shadow-sm); position: relative; }
+  .portfolio-card:hover { border-color: var(--ink-faint); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .portfolio-card.sev-concern { border-color: rgba(184,80,58,0.35); }
+  .portfolio-card.sev-concern::before { content: ''; position: absolute; top: 18px; right: 18px; width: 8px; height: 8px; border-radius: 50%; background: var(--rust); animation: watch-pulse 2.4s ease-in-out infinite; }
+  .portfolio-section-label { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; margin: 22px 0 11px; display: flex; align-items: center; gap: 8px; }
+  .portfolio-section-label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--ink-faint); flex-shrink: 0; }
+  .portfolio-section-label:first-of-type { margin-top: 0; }
+  .pc-status { font-family: var(--mono); font-size: 10.5px; margin-bottom: 13px; }
+  .pc-status.concern { color: var(--rust); }
+  .pc-status.perfect { color: var(--sage); }
+  .pc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+  .pc-name { font-family: var(--display); font-weight: 600; font-size: 15px; }
+  .mode-badge { font-family: var(--mono); font-size: 8.5px; letter-spacing: 0.06em; padding: 3px 7px; border-radius: 5px; text-transform: uppercase; display: inline-flex; align-items: center; gap: 4px; }
+  .mode-badge::before { content: ''; width: 5px; height: 5px; border-radius: 50%; }
+  .mode-badge.live { background: var(--sage-tint); color: var(--sage); }
+  .mode-badge.live::before { background: var(--sage); }
+  .mode-badge.demo { background: var(--panel-3); color: var(--ink-faint); }
+  .mode-badge.demo::before { border: 1px solid var(--ink-faint); }
+  .pc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .pc-stat-label { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; }
+  .pc-stat-val { font-family: var(--display); font-size: 16px; font-weight: 600; margin-top: 3px; font-variant-numeric: tabular-nums; color: var(--ink); }
+
+  .back-link { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); cursor: pointer; margin-bottom: 12px; display: inline-flex; align-items: center; gap: 5px; }
+  .back-link::before { content: '←'; }
+  .back-link:hover { color: var(--brass); }
+  .top-row { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; flex-wrap: wrap; gap: 10px; }
+  .client-title-row { display: flex; align-items: center; gap: 10px; }
+  .client-title { font-family: var(--display); font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .client-title-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: 5px; }
+  .top-actions { display: flex; gap: 8px; align-items: center; }
+  .sync-btn, .manage-btn { font-family: var(--mono); font-size: 11px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-dim); padding: 8px 14px; border-radius: 7px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .sync-btn:hover, .manage-btn:hover { border-color: var(--brass); color: var(--brass); }
+  .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+
+  /* Underline tabs (pulled from the Drift reference) instead of pill
+     tabs — reserve the pill/filled treatment for the view-tabs below so
+     the two tab systems stay visually distinct from each other. */
+  .platform-tabs { display: flex; gap: 18px; border-bottom: 1px solid var(--line); }
+  .ptab { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); padding: 9px 2px; cursor: pointer; text-transform: uppercase; letter-spacing: 0.02em; border-bottom: 2px solid transparent; transition: color 0.15s; }
+  .ptab.active { color: var(--brass); border-bottom-color: var(--brass); }
+  .range-row { display: flex; gap: 5px; }
+  .range-btn { font-family: var(--mono); font-size: 10.5px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-faint); padding: 7px 13px; border-radius: 7px; cursor: pointer; transition: border-color 0.15s, color 0.15s; }
+  .range-btn.active { border-color: var(--brass); color: var(--brass); background: var(--brass-tint); }
+  .accounts-strip { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 20px; }
+  .account-pill { font-family: var(--mono); font-size: 10px; color: var(--ink-dim); background: var(--panel); border: 1px solid var(--line); border-radius: 20px; padding: 6px 13px; }
+  .account-pill .plat-dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; }
+  .account-pill .never { color: var(--rust); }
+  .sis-badge { font-family: var(--mono); font-size: 9px; color: var(--google); background: rgba(163,132,31,0.1); border: 1px solid rgba(163,132,31,0.25); border-radius: 4px; padding: 1px 6px; margin-left: 8px; }
+
+  /* ---------- Hero KPI (pulled from the Analytics reference) ----------
+     One bold color-block card for the single most important number,
+     asymmetric against the smaller cards next to it — not another
+     uniform grid tile. Used for the top-line spend figure. */
+  .hero-kpi { background: linear-gradient(135deg, var(--brass) 0%, var(--brass-bright) 100%); border-radius: 16px; padding: 22px 24px; color: #fff; box-shadow: 0 8px 24px rgba(169,123,40,0.25); }
+  .hero-kpi-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; margin-bottom: 8px; }
+  .hero-kpi-value { font-family: var(--display); font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .hero-kpi-delta { font-family: var(--mono); font-size: 11px; opacity: 0.9; margin-top: 6px; }
+
+  /* ---------- KPIs ---------- */
+  .kpi-group { margin-bottom: 18px; }
+  .kpi-group-label { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 9px; }
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .kpi-card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 15px 16px; box-shadow: var(--shadow-sm); cursor: pointer; transition: border-color 0.15s, transform 0.1s, box-shadow 0.15s; }
+  .kpi-card:hover { border-color: var(--ink-faint); transform: translateY(-1px); box-shadow: var(--shadow); }
+  .kpi-label { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 7px; }
+  .kpi-value-row { display: flex; align-items: baseline; gap: 7px; margin-bottom: 9px; flex-wrap: wrap; }
+  .kpi-value { font-family: var(--display); font-size: 19px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .kpi-delta { font-family: var(--mono); font-size: 10px; padding: 1px 6px; border-radius: 4px; }
+  .kpi-delta.up { color: var(--sage); background: var(--sage-tint); }
+  .kpi-delta.down { color: var(--rust); background: var(--rust-tint); }
+  .sparkline { display: block; }
+
+  .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 22px; }
+  .panel-block { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 19px; box-shadow: var(--shadow-sm); }
+  .panel-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+  .panel-title { font-family: var(--mono); font-size: 10.5px; font-weight: 500; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
+  .chart-toggle { display: flex; gap: 3px; }
+  .ctoggle-btn { font-family: var(--mono); font-size: 9.5px; background: var(--panel-3); border: 1px solid var(--line); color: var(--ink-faint); padding: 4px 9px; border-radius: 5px; cursor: pointer; }
+  .ctoggle-btn.active { color: var(--brass); border-color: var(--brass); background: var(--brass-tint); }
+  canvas { max-height: 220px; }
+  .donut-legend { display: flex; flex-direction: column; gap: 9px; margin-top: 13px; }
+  .legend-row { display: flex; justify-content: space-between; align-items: center; font-family: var(--mono); font-size: 11px; color: var(--ink-dim); }
+  .legend-left { display: flex; align-items: center; gap: 8px; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .legend-val { color: var(--ink-faint); }
+
+  .view-tabs { display: flex; gap: 4px; background: var(--panel-3); border-radius: 10px; padding: 4px; margin-bottom: 20px; width: fit-content; }
+  .vtab { font-family: var(--body); font-weight: 600; font-size: 12.5px; color: var(--ink-faint); padding: 8px 17px; border-radius: 7px; cursor: pointer; transition: color 0.15s, background 0.15s; }
+  .vtab.active { background: var(--panel); color: var(--brass); box-shadow: var(--shadow-sm); }
+  .view-container { display: none; }
+
+  .attention-path { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 6px; }
+  .attention-stats { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
+  .insights-panel { margin-bottom: 22px; }
+  .insights-panel .insight-card { margin-bottom: 8px; }
+
+  .insight-card { display: flex; gap: 13px; padding: 15px 17px; border-radius: 11px; border: 1px solid var(--line); background: var(--panel-2); }
+  .insight-icon { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--ink-faint); flex-shrink: 0; margin-top: 3px; position: relative; }
+  .insight-card.concern .insight-icon { border-color: var(--rust); }
+  .insight-card.concern .insight-icon::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--rust); }
+  .insight-card.good .insight-icon, .insight-card.perfect .insight-icon { border-color: var(--sage); }
+  .insight-card.good .insight-icon::after, .insight-card.perfect .insight-icon::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--sage); }
+  .insight-card.neutral .insight-icon { border-color: var(--brass); }
+  .insight-card.neutral .insight-icon::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--brass); }
+  .insight-title { font-weight: 600; font-size: 13.5px; margin-bottom: 4px; }
+  .insight-explanation { font-size: 12.5px; color: var(--ink-dim); line-height: 1.6; }
+  .insight-confidence { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--ink-faint); background: var(--panel); border: 1px solid var(--line); padding: 2px 7px; border-radius: 4px; display: inline-block; margin-top: 9px; letter-spacing: 0.04em; }
+  .no-insights { font-family: var(--mono); font-size: 12px; color: var(--ink-faint); text-align: center; padding: 22px; }
+
+  /* ---------- Checklist rows (pulled from the Haven Diagnostics
+     reference) — used for Setup Audit specifically. A pass/fail
+     criteria list reads faster than a stack of cards when every row is
+     the same shape of thing (a check that either passed or didn't). */
+  .checklist-row { display: flex; align-items: flex-start; gap: 11px; padding: 12px 0; border-bottom: 1px solid var(--line-soft); }
+  .checklist-row:last-child { border-bottom: none; }
+  .checklist-mark { width: 18px; height: 18px; border-radius: 50%; background: var(--rust-tint); color: var(--rust); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; margin-top: 1px; }
+  .checklist-row .checklist-title { font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .checklist-row .checklist-explanation { font-size: 12px; color: var(--ink-dim); line-height: 1.55; }
+  .checklist-row .checklist-path { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.03em; margin-bottom: 3px; }
+
+  /* ---------- Forecast rings (pulled from the Haven Diagnostics
+     reference) — three checkpoints of the same pacing math, side by
+     side, instead of one bar. Hand-rolled SVG, no chart library. */
+  .forecast-rings { display: flex; gap: 20px; justify-content: space-around; padding: 6px 0 2px; }
+  .forecast-ring-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .forecast-ring-label { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
+  .forecast-ring-pct { font-family: var(--display); font-size: 15px; font-weight: 700; }
+
+  /* ---------- Tree rows ---------- */
+  .tree-row { cursor: default; }
+  .tree-row.expandable { cursor: pointer; }
+  .tree-row.level-campaign { background: var(--panel-2); font-weight: 600; }
+  .tree-row.level-campaign:hover { background: var(--panel-3); }
+  .tree-row.level-adset td { font-size: 12px; color: var(--ink); }
+  .tree-row.level-adset { background: rgba(30,27,38,0.012); }
+  .tree-row.level-adset:hover { background: rgba(30,27,38,0.025); }
+  .tree-row.level-ad td { font-size: 11.5px; color: var(--ink-dim); }
+  .tree-toggle { display: inline-block; width: 14px; color: var(--ink-faint); font-size: 9px; transition: transform 0.15s; }
+  .tree-toggle.open { transform: rotate(90deg); }
+  .tree-name-cell { display: flex; align-items: center; gap: 7px; }
+  .tree-indent-1 { padding-left: 22px; }
+  .tree-indent-2 { padding-left: 44px; }
+
+  .insight-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 10.5px; padding: 4px 10px; border-radius: 20px; cursor: pointer; white-space: nowrap; }
+  .insight-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+  .insight-badge.concern { background: var(--rust-tint); color: var(--rust); }
+  .insight-badge.concern::before { background: var(--rust); }
+  .insight-badge.good, .insight-badge.perfect { background: var(--sage-tint); color: var(--sage); }
+  .insight-badge.good::before, .insight-badge.perfect::before { background: var(--sage); }
+  .insight-badge.neutral { background: var(--brass-tint); color: var(--brass); }
+  .insight-badge.neutral::before { background: var(--brass); }
+  .insight-badge.unknown { background: var(--panel-3); color: var(--ink-faint); }
+  .insight-badge.unknown::before { border: 1px solid var(--ink-faint); background: transparent; }
+  .insight-detail-row td { background: var(--panel-2); padding: 11px 17px; font-size: 12px; color: var(--ink-dim); line-height: 1.65; border-bottom: 1px solid var(--line); }
+  .insight-detail-row .conf-tag { font-family: var(--mono); font-size: 9px; text-transform: uppercase; color: var(--ink-faint); background: var(--panel); border: 1px solid var(--line); padding: 2px 7px; border-radius: 4px; margin-left: 8px; }
+
+  .table-controls { display: flex; gap: 8px; margin-bottom: 15px; flex-wrap: wrap; }
+  .search-input { font-family: var(--body); font-size: 12.5px; background: var(--panel); border: 1px solid var(--line); color: var(--ink); padding: 9px 13px; border-radius: 7px; flex: 1; min-width: 160px; }
+  .search-input::placeholder { color: var(--ink-faint); }
+  .status-select { font-family: var(--mono); font-size: 11px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-dim); padding: 9px 11px; border-radius: 7px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.05em; padding: 9px 10px; border-bottom: 1px solid var(--line); cursor: pointer; user-select: none; }
+  th:hover { color: var(--brass); }
+  td { padding: 11px 10px; font-size: 12.5px; border-bottom: 1px solid var(--line-soft); }
+  tr:last-child td { border-bottom: none; }
+  .plat-badge { display: inline-flex; align-items: center; gap: 5px; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; color: var(--ink-faint); }
+  .plat-dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+  .status-badge { display: inline-flex; align-items: center; gap: 6px; font-family: var(--mono); font-size: 9.5px; text-transform: uppercase; letter-spacing: 0.03em; }
+  .status-badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .status-badge.active .dot { background: var(--sage); }
+  .status-badge.active { color: var(--sage); }
+  .status-badge.paused .dot { background: var(--ink-faint); }
+  .status-badge.paused { color: var(--ink-faint); }
+  .num-cell { font-family: var(--mono); text-align: right; font-variant-numeric: tabular-nums; }
+  .campaign-name-cell { font-weight: 500; }
+
+  .empty-state { text-align: center; padding: 80px 20px; color: var(--ink-faint); font-family: var(--mono); font-size: 13px; }
+  .empty-state .big { font-family: var(--display); font-size: 18px; color: var(--ink); margin-bottom: 9px; font-weight: 600; }
+
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(30,27,38,0.4); align-items: center; justify-content: center; z-index: 10; }
+  .modal-overlay.open { display: flex; }
+  .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 26px; width: 370px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(30,27,38,0.18); }
+  .modal h3 { font-family: var(--display); font-size: 17px; font-weight: 600; margin-bottom: 18px; }
+  .modal-hint { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); margin: -6px 0 12px; line-height: 1.55; }
+  .modal input, .modal textarea, .modal select { width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink); padding: 10px 12px; border-radius: 7px; font-family: var(--body); font-size: 13px; margin-bottom: 10px; }
+  .modal input::placeholder, .modal textarea::placeholder { color: var(--ink-faint); }
+  .modal input:focus, .modal textarea:focus, .modal select:focus { border-color: var(--brass); }
+  .modal-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 10px; }
+  .modal-actions button { font-family: var(--body); font-size: 13px; font-weight: 600; padding: 9px 17px; border-radius: 7px; border: none; cursor: pointer; }
+  .btn-cancel { background: transparent; color: var(--ink-faint); }
+  .btn-cancel:hover { color: var(--ink); }
+  .btn-save { background: var(--brass); color: #fff; }
+  .btn-save:hover { background: var(--brass-bright); }
+  .syncing-overlay { text-align: center; padding: 70px; font-family: var(--mono); color: var(--brass); font-size: 12px; }
+  .syncing-overlay::before { content: ''; display: block; width: 20px; height: 20px; margin: 0 auto 14px; border-radius: 50%; border: 2px solid var(--brass-tint); border-top-color: var(--brass); animation: watch-spin 0.8s linear infinite; }
+
+  @keyframes watch-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+  @keyframes watch-spin { to { transform: rotate(360deg); } }
+
+  @media (max-width: 720px) {
+    .sidebar { position: static; height: auto; width: 100%; }
+    .app { flex-direction: column; }
+    .main { padding: 20px; }
+    .analytics-grid { grid-template-columns: 1fr; }
+    .forecast-rings { flex-wrap: wrap; }
+  }
+
+  /* ---------- Print / "Export Report" ---------- */
+  @media print {
+    .sidebar, .top-actions .sync-btn, .top-actions button[onclick*="openAccountModal"],
+    .top-actions button[onclick*="openGoalsModal"], .top-actions button[onclick*="openRulesModal"],
+    .top-actions button[onclick*="window.print"],
+    .view-tabs, .ctoggle-btn,
+    .range-row, .platform-tabs, .modal-overlay, .search-input, .status-select,
+    .chart-toggle { display: none !important; }
+    body { background: #fff; }
+    .main { padding: 0; }
+    .panel-block, .kpi-card, .insight-card, .portfolio-card { box-shadow: none; break-inside: avoid; }
+    canvas { max-height: 260px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="sidebar">
+    <div class="sidebar-head" onclick="showPortfolio()">
+      <div class="brand"><span class="brand-mark"></span>ARGUS <span>PULSE</span></div>
+      <div class="brand-sub">AD PERFORMANCE COMMAND CENTER</div>
+    </div>
+    <div class="client-nav">
+      <div class="client-nav-label">Clients</div>
+      <div id="client-nav-list"></div>
+    </div>
+    <div class="sidebar-foot">
+      <button class="add-client-btn" onclick="openClientModal()">+ Add Client</button>
+      <div id="user-footer" style="margin-top:10px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);display:flex;justify-content:space-between;align-items:center;"></div>
+    </div>
+  </div>
+  <div class="main" id="main-content"></div>
+</div>
+
+<div class="modal-overlay" id="auth-gate">
+  <div class="modal">
+    <h3 id="auth-title">Sign in</h3>
+    <div class="modal-hint" id="auth-hint">ARGUS Pulse — this account only exists on this machine.</div>
+    <input type="text" id="auth-username" placeholder="Username" autocomplete="username">
+    <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password">
+    <div class="modal-hint" id="auth-error" style="color:var(--rust);display:none;"></div>
+    <div class="modal-actions" style="justify-content:stretch;">
+      <button class="btn-save" style="flex:1;" id="auth-submit-btn" onclick="submitAuth()">Sign in</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="users-modal-overlay">
+  <div class="modal">
+    <h3>Manage Users</h3>
+    <div id="users-list" style="margin-bottom:14px;"></div>
+    <div class="modal-hint">Add a teammate — every user sees every client, no per-client access scoping yet.</div>
+    <input type="text" id="new-user-username" placeholder="Username">
+    <input type="password" id="new-user-password" placeholder="Password (8+ chars)">
+    <select id="new-user-role"><option value="member">Member</option><option value="admin">Admin</option></select>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeUsersModal()">Close</button>
+      <button class="btn-save" onclick="addUser()">Add User</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="client-modal-overlay">
+  <div class="modal">
+    <h3>Add Client</h3>
+    <input type="text" id="new-client-name" placeholder="Client / brand name">
+    <textarea id="new-client-notes" placeholder="Notes (contact, retainer, next action…)" rows="3"></textarea>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeClientModal()">Cancel</button>
+      <button class="btn-save" onclick="saveClient()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="account-modal-overlay">
+  <div class="modal">
+    <h3>Add Ad Account</h3>
+    <select id="new-account-platform" onchange="toggleGoogleFields()">
+      <option value="meta">Meta (Facebook/Instagram)</option>
+      <option value="google">Google Ads</option>
+      <option value="tiktok">TikTok Ads</option>
+    </select>
+    <input type="text" id="new-account-id" placeholder="Account ID (leave blank for demo data)">
+    <input type="text" id="new-account-label" placeholder="Label e.g. Main account">
+    <input type="text" id="new-account-token" placeholder="Access token (optional — for Meta, or Google's manual-paste mode)">
+    <div id="google-fields" style="display:none;">
+      <input type="text" id="new-account-dev-token" placeholder="Google Ads Developer Token">
+      <input type="text" id="new-account-manager-id" placeholder="Manager (MCC) Customer ID">
+      <div class="modal-hint">Auto-renewing sync (recommended) — fill these three instead of Access token above, and sync keeps working unattended:</div>
+      <input type="text" id="new-account-client-id" placeholder="Google OAuth Client ID">
+      <input type="text" id="new-account-client-secret" placeholder="Google OAuth Client Secret">
+      <input type="text" id="new-account-refresh-token" placeholder="Google OAuth Refresh Token">
+      <div class="modal-hint">Or skip these and paste a manual Access token above — works too, but expires hourly and needs re-pasting before each sync.</div>
+    </div>
+    <div class="modal-hint" id="tiktok-hint" style="display:none;">TikTok isn't connected to real data yet — this will always show demo numbers regardless of what you enter.</div>
+    <div class="modal-hint">Leave Account ID + Token empty → demo data. Fill both (+ Google's extra fields) → pulls real numbers.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeAccountModal()">Cancel</button>
+      <button class="btn-save" onclick="saveAccount()">Add</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="goals-modal-overlay">
+  <div class="modal">
+    <h3>Goals & Budget</h3>
+    <div class="modal-hint">Optional — leave blank to skip. Setting these lets insights compare this client against what THEY care about, not a generic threshold.</div>
+    <input type="number" step="0.01" id="goal-target-cpa" placeholder="Target CPA (₹)">
+    <input type="number" step="0.01" id="goal-target-roas" placeholder="Target ROAS (e.g. 4)">
+    <input type="number" step="1" id="goal-monthly-budget" placeholder="Monthly ad budget (₹)">
+    <div class="modal-hint">Monthly budget enables pacing — "on track / over / under" vs how far through the month you are.</div>
+    <input type="text" id="goal-webhook-url" placeholder="Slack/Discord webhook URL (optional)">
+    <div class="modal-hint">Get pinged automatically when the daily auto-sync (6am) finds a concern — no need to open the dashboard. Leave blank to skip.</div>
+    <input type="number" step="0.1" id="goal-management-fee-pct" placeholder="Management fee (% of spend, optional)">
+    <div class="modal-hint">Shows your billable fee for the period next to spend — one flat %, not tiered.</div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeGoalsModal()">Cancel</button>
+      <button class="btn-save" onclick="saveGoals()">Save</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="rules-modal-overlay">
+  <div class="modal">
+    <h3>Rules</h3>
+    <div class="modal-hint">Recommend-only — a triggered rule shows up as a recommended action for a human to review. ARGUS never pauses a campaign or changes a budget on its own.</div>
+    <div id="rules-list" style="margin-bottom:14px;"></div>
+    <input type="text" id="rule-name" placeholder="Name (optional)">
+    <select id="rule-metric">
+      <option value="cpa">CPA</option>
+      <option value="roas">ROAS</option>
+      <option value="ctr">CTR</option>
+      <option value="frequency">Frequency</option>
+      <option value="spend">Spend</option>
+      <option value="conversions">Conversions</option>
+    </select>
+    <select id="rule-operator">
+      <option value=">">is greater than</option>
+      <option value="<">is less than</option>
+    </select>
+    <input type="number" step="0.01" id="rule-value" placeholder="Threshold value">
+    <input type="text" id="rule-action" placeholder="Recommended action (e.g. \"Pause this ad set\")">
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeRulesModal()">Close</button>
+      <button class="btn-save" onclick="addRule()">Add Rule</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let clients = [];
+  let activeClientId = null;
+  let trendChart = null, donutChart = null, radarChart = null;
+  let sortKey = 'spend', sortDir = -1;
+  let currentRange = 30;
+  let activePlatformTab = 'all';
+  let trendMetricPair = 'spend_revenue';
+  let currentView = 'overview';
+  const PLATFORM_COLORS = { meta: '#4a6fa8', google: '#a3841f', tiktok: '#a24b6b' };
+
+  function fmtMoney(n) {
+    if (n === null || n === undefined) return '—';
+    const abs = Math.abs(n);
+    if (abs >= 1e7) return '₹' + (n / 1e7).toFixed(2) + 'Cr';
+    if (abs >= 1e5) return '₹' + (n / 1e5).toFixed(2) + 'L';
+    if (abs >= 1e3) return '₹' + (n / 1e3).toFixed(1) + 'K';
+    return '₹' + Math.round(n).toLocaleString('en-IN');
+  }
+  function fmtNum(n) {
+    if (n === null || n === undefined) return '—';
+    const abs = Math.abs(n);
+    if (abs >= 1e7) return (n / 1e7).toFixed(2) + 'Cr';
+    if (abs >= 1e5) return (n / 1e5).toFixed(2) + 'L';
+    if (abs >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+    return Math.round(n).toLocaleString('en-IN');
+  }
+  function escapeHtml(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+  function timeAgo(iso) {
+    if (!iso) return 'never synced';
+    const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+    if (mins < 1) return 'synced just now';
+    if (mins < 60) return `synced ${mins}m ago`;
+    if (mins < 1440) return `synced ${Math.round(mins / 60)}h ago`;
+    return `synced ${Math.round(mins / 1440)}d ago`;
+  }
+  function deltaHtml(pct) {
+    if (pct === null || pct === undefined || !isFinite(pct)) return '';
+    const dir = pct >= 0 ? 'up' : 'down';
+    const arrow = pct >= 0 ? '▲' : '▼';
+    return `<span class="kpi-delta ${dir}">${arrow} ${Math.abs(pct).toFixed(1)}%</span>`;
+  }
+  function sparklineSvg(values, color, fmt) {
+    if (!values || values.length < 2) return '';
+    const w = 100, h = 30, pad = 2;
+    const max = Math.max(...values), min = Math.min(...values);
+    const range = (max - min) || 1;
+    const pts = values.map((v, i) => {
+      const x = (i / (values.length - 1)) * (w - pad * 2) + pad;
+      const y = h - pad - ((v - min) / range) * (h - pad * 2);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    const formatter = fmt || (v => Math.round(v).toLocaleString('en-IN'));
+    const tooltip = `Over this period — low: ${formatter(min)}, high: ${formatter(max)}, latest: ${formatter(values[values.length - 1])}`;
+    return `<svg class="sparkline" width="100%" height="30" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><title>${escapeHtml(tooltip)}</title><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  }
+  function platDot(platform) { return `<span class="plat-dot" style="background:${PLATFORM_COLORS[platform] || '#888'}"></span>`; }
+
+  async function loadClients() {
+    clients = await (await fetch('/api/clients')).json();
+    renderSidebar();
+  }
+
+  function renderSidebar() {
+    const list = document.getElementById('client-nav-list');
+    if (!clients.length) {
+      list.innerHTML = '<div style="padding:10px;font-family:var(--mono);font-size:11px;color:var(--ink-faint);">No clients yet</div>';
+      return;
+    }
+    list.innerHTML = clients.map(c => `
+      <div class="client-item ${c.id === activeClientId ? 'active' : ''}" onclick="selectClient(${c.id})">
+        <div class="ci-left"><span class="dot ${c.status !== 'active' ? 'paused' : ''}"></span><span class="ci-name">${escapeHtml(c.name)}</span></div>
+        <span class="ci-count">${c.ad_accounts.length}</span>
+      </div>
+    `).join('');
+  }
+
+  async function showPortfolio() {
+    activeClientId = null;
+    renderSidebar();
+    const main = document.getElementById('main-content');
+    main.innerHTML = `<div class="syncing-overlay">LOADING PORTFOLIO…</div>`;
+    const portfolio = await (await fetch(`/api/portfolio?days=${currentRange}`)).json();
+    if (!portfolio.length) {
+      main.innerHTML = `<div class="empty-state"><div class="big">No clients yet</div>Add your first client from the sidebar to start tracking ad performance.</div>`;
+      return;
+    }
+    // Separate into "needs attention" vs "healthy" for a clear split,
+    // since the backend already sorts by urgency
+    const needsAttention = portfolio.filter(c => c.brandInsight.severity === 'concern' || c.concernCount > 0);
+    const healthy = portfolio.filter(c => !(c.brandInsight.severity === 'concern' || c.concernCount > 0));
+
+    function portfolioCard(c) {
+      const sev = c.brandInsight.severity;
+      const statusLine = c.concernCount > 0
+        ? `<div class="pc-status concern">⚠ ${c.concernCount} item${c.concernCount === 1 ? '' : 's'} need${c.concernCount === 1 ? 's' : ''} attention</div>`
+        : `<div class="pc-status perfect">✓ Everything running clean</div>`;
+      return `
+        <div class="portfolio-card sev-${sev}" onclick="selectClient(${c.id})">
+          <div class="pc-top"><div class="pc-name">${escapeHtml(c.name)}</div><span class="mode-badge ${c.is_live ? 'live' : 'demo'}">${c.is_live ? 'Live' : 'Demo'}</span></div>
+          ${statusLine}
+          <div class="pc-stats">
+            <div><div class="pc-stat-label">Spend</div><div class="pc-stat-val">${fmtMoney(c.totals.spend)}</div></div>
+            <div><div class="pc-stat-label">ROAS</div><div class="pc-stat-val">${c.totals.roas ? c.totals.roas.toFixed(1) + 'x' : '—'}</div></div>
+            <div><div class="pc-stat-label">Clicks</div><div class="pc-stat-val">${fmtNum(c.totals.clicks)}</div></div>
+            <div><div class="pc-stat-label">Accounts</div><div class="pc-stat-val">${c.account_count}</div></div>
+          </div>
+        </div>
+      `;
+    }
+
+    main.innerHTML = `
+      <div class="portfolio-head"><div><div class="portfolio-title">Portfolio</div><div class="portfolio-sub">${portfolio.length} client${portfolio.length === 1 ? '' : 's'} · last ${currentRange} days</div></div></div>
+      ${needsAttention.length ? `
+        <div class="portfolio-section-label">Needs attention</div>
+        <div class="portfolio-grid">${needsAttention.map(portfolioCard).join('')}</div>
+      ` : ''}
+      ${healthy.length ? `
+        <div class="portfolio-section-label">Running clean</div>
+        <div class="portfolio-grid">${healthy.map(portfolioCard).join('')}</div>
+      ` : ''}
+    `;
+  }
+
+  async function selectClient(id) {
+    // Only reset the platform filter when actually switching to a
+    // different client — previously this reset on every call, which
+    // silently threw away your Meta/Google selection on a date-range change
+    if (id !== activeClientId) activePlatformTab = 'all';
+    activeClientId = id;
+    expandedPaths = new Set();
+    renderSidebar();
+    await loadAndRenderSummary();
+  }
+
+  async function loadAndRenderSummary() {
+    const main = document.getElementById('main-content');
+    main.innerHTML = `<div class="syncing-overlay">LOADING…</div>`;
+    const client = clients.find(c => c.id === activeClientId);
+    const summary = await fetch(`/api/clients/${activeClientId}/summary?days=${currentRange}&platform=${activePlatformTab}`).then(r => r.json());
+    renderClientDetail(client, summary);
+  }
+
+  function renderClientDetail(client, summary) {
+    window._summary = summary;
+    window._client = client;
+    const main = document.getElementById('main-content');
+    const isLive = summary.accounts.some(a => a.last_sync_mode === 'live');
+    const platformsPresent = [...new Set(summary.accounts.map(a => a.platform))];
+
+    main.innerHTML = `
+      <span class="back-link" onclick="showPortfolio()">← Portfolio</span>
+      <div class="top-row">
+        <div>
+          <div class="client-title-row"><div class="client-title">${escapeHtml(client.name)}</div><span class="mode-badge ${isLive ? 'live' : 'demo'}">${isLive ? 'Live' : 'Demo'}</span></div>
+          <div class="client-title-meta">${client.notes ? escapeHtml(client.notes) : 'No notes yet'}</div>
+        </div>
+        <div class="top-actions">
+          <button class="manage-btn" onclick="window.print()">Export Report</button>
+          <button class="manage-btn" onclick="openGoalsModal(${client.id})">Goals</button>
+          <button class="manage-btn" onclick="openRulesModal(${client.id})">Rules</button>
+          <button class="manage-btn" onclick="openAccountModal(${client.id})">+ Ad Account</button>
+          <button class="sync-btn" onclick="syncAllAccounts(${client.id})">↻ Sync All</button>
+        </div>
+      </div>
+      <div class="controls-row">
+        <div class="platform-tabs">
+          <div class="ptab ${activePlatformTab === 'all' ? 'active' : ''}" onclick="setPlatformTab('all')">All</div>
+          ${platformsPresent.map(p => `<div class="ptab ${activePlatformTab === p ? 'active' : ''}" onclick="setPlatformTab('${p}')">${p}</div>`).join('')}
+        </div>
+        <div class="range-row">
+          ${[7, 14, 30, 90].map(r => `<button class="range-btn ${r === currentRange ? 'active' : ''}" onclick="setRange(${r})">${r}D</button>`).join('')}
+        </div>
+      </div>
+      <div class="accounts-strip">
+        ${summary.accounts.length ? summary.accounts.map(a => `
+          <div class="account-pill">${platDot(a.platform)}${escapeHtml(a.label)} · ${a.last_sync_mode === 'live' ? '<span style="color:var(--sage)">live</span>' : a.last_sync_mode === 'mock' ? '<span>demo</span>' : '<span style="color:var(--ink-faint)">unsynced</span>'} · ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}</div>
+        `).join('') : '<div class="account-pill">No ad accounts connected yet</div>'}
+      </div>
+      <div class="view-tabs">
+        <div class="vtab ${currentView === 'overview' ? 'active' : ''}" onclick="switchView('overview')">Overview</div>
+        <div class="vtab ${currentView === 'attention' ? 'active' : ''}" onclick="switchView('attention')">Attention Needed${window._attentionCount ? ` (${window._attentionCount})` : ''}</div>
+        <div class="vtab ${currentView === 'breakdown' ? 'active' : ''}" onclick="switchView('breakdown')">Full Breakdown</div>
+      </div>
+
+      <div id="view-overview" class="view-container"></div>
+      <div id="view-attention" class="view-container"></div>
+      <div id="view-breakdown" class="view-container"></div>
+    `;
+
+    renderView(currentView);
+  }
+
+  function renderView(view) {
+    document.querySelectorAll('.vtab').forEach((el, i) => el.classList.toggle('active', ['overview', 'attention', 'breakdown'][i] === view));
+    document.querySelectorAll('.view-container').forEach(el => el.style.display = 'none');
+    document.getElementById(`view-${view}`).style.display = 'block';
+
+    if (view === 'overview') renderOverviewView();
+    else if (view === 'attention') renderAttentionView();
+    else if (view === 'breakdown') renderBreakdownView();
+  }
+
+  function switchView(view) { currentView = view; renderView(view); }
+
+  function renderOverviewView() {
+    const el = document.getElementById('view-overview');
+    const summary = window._summary, client = window._client;
+    const { attention } = collectFlatInsights(summary.campaigns);
+    const topIssues = attention.slice(0, 3);
+    const auditItems = summary.campaigns.filter(c => c.auditFindings && c.auditFindings.length)
+      .flatMap(c => c.auditFindings.map(f => ({ campaign: c.name, ...f })));
+
+    el.innerHTML = `
+      <div id="kpi-groups"></div>
+      <div class="insights-panel">
+        <div class="panel-block">
+          <div class="panel-title-row"><div class="panel-title">Brand Overview — Why performance moved</div></div>
+          <div id="brand-insight"></div>
+        </div>
+      </div>
+      ${(summary.goalInsight || summary.pacing || summary.managementFee) ? `
+        <div class="insights-panel">
+          <div class="panel-block">
+            <div class="panel-title-row"><div class="panel-title">Goals & Pacing</div><div class="ctoggle-btn" onclick="openGoalsModal(${client.id})">Edit</div></div>
+            ${summary.goalInsight ? `
+              <div class="insight-card ${summary.goalInsight.severity}" style="margin-bottom:${summary.pacing || summary.managementFee ? '10px' : '0'};">
+                <div class="insight-icon"></div>
+                <div>
+                  <div class="insight-title">${escapeHtml(summary.goalInsight.title)}</div>
+                  <div class="insight-explanation">${escapeHtml(summary.goalInsight.explanation)}</div>
+                </div>
+              </div>
+            ` : ''}
+            ${summary.pacing ? renderPacing(summary.pacing) : ''}
+            ${summary.managementFee ? `
+              <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim);${summary.pacing ? 'margin-top:10px;padding-top:10px;border-top:1px solid var(--line);' : ''}">
+                Management fee (${summary.managementFee.pct}% of period spend): <span style="color:var(--brass);">${fmtMoney(summary.managementFee.amount)}</span>
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      ` : ''}
+      ${topIssues.length ? `
+        <div class="insights-panel">
+          <div class="panel-block">
+            <div class="panel-title-row">
+              <div class="panel-title">Top Issues Right Now</div>
+              <div class="ctoggle-btn" onclick="switchView('attention')">View all ${attention.length} →</div>
+            </div>
+            ${topIssues.map(item => `
+              <div class="insight-card ${item.node.insight.severity}">
+                <div class="insight-icon"></div>
+                <div>
+                  <div class="attention-path">${item.level} · ${item.path.map(escapeHtml).join(' → ')}</div>
+                  <div class="insight-title">${escapeHtml(item.node.insight.title)}</div>
+                  <div class="insight-explanation">${escapeHtml(item.node.insight.explanation)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+      ${renderRecommendedActions(summary.recommendedActions || [])}
+      ${auditItems.length ? `
+        <div class="insights-panel">
+          <div class="panel-block">
+            <div class="panel-title-row"><div class="panel-title">Setup Audit — configuration &amp; tracking issues</div></div>
+            ${auditItems.map(item => `
+              <div class="checklist-row">
+                <div class="checklist-mark">✕</div>
+                <div>
+                  <div class="checklist-path">Campaign · ${escapeHtml(item.campaign)}</div>
+                  <div class="checklist-title">${escapeHtml(item.title)}</div>
+                  <div class="checklist-explanation">${escapeHtml(item.explanation)}</div>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      ` : ''}
+      <div class="analytics-grid">
+        <div class="panel-block">
+          <div class="panel-title-row">
+            <div class="panel-title">Trend</div>
+            <div class="chart-toggle">
+              <div class="ctoggle-btn ${trendMetricPair === 'spend_revenue' ? 'active' : ''}" onclick="setTrendPair('spend_revenue')">Spend / Revenue</div>
+              <div class="ctoggle-btn ${trendMetricPair === 'clicks_conversions' ? 'active' : ''}" onclick="setTrendPair('clicks_conversions')">Clicks / Conv.</div>
+              ${(client.target_cpa || client.target_roas) ? `<div class="ctoggle-btn ${trendMetricPair === 'vs_goal' ? 'active' : ''}" onclick="setTrendPair('vs_goal')">vs Goal</div>` : ''}
+            </div>
+          </div>
+          <canvas id="trend-chart"></canvas>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:14px;">
+          <div class="panel-block">
+            <div class="panel-title-row"><div class="panel-title">Spend by Platform</div></div>
+            <canvas id="donut-chart"></canvas>
+            <div class="donut-legend" id="donut-legend"></div>
+          </div>
+          <div class="panel-block">
+            <div class="panel-title-row"><div class="panel-title">Performance Radar — vs last period</div></div>
+            <canvas id="radar-chart"></canvas>
+          </div>
+        </div>
+      </div>
+    `;
+    renderKpiCards();
+    renderInsightCard(window._summary.brandInsight);
+    renderTrendChart();
+    renderDonutChart();
+    renderRadarChart();
+  }
+
+  // Walks the whole tree and flattens every concerning/neutral item (across
+  // campaign, ad set, AND ad level) into one sorted triage list — this is
+  // the "understand fast" view: no expanding trees, everything that needs
+  // eyes is right here, worst first.
+  function collectFlatInsights(campaigns) {
+    const SEV_RANK = { concern: 0, neutral: 1 };
+    const attention = [];
+    const wins = [];
+    campaigns.forEach(c => {
+      if (c.insight.severity in SEV_RANK) attention.push({ level: 'Campaign', path: [c.name], node: c });
+      if (c.insight.severity === 'good') wins.push({ level: 'Campaign', path: [c.name], node: c });
+      c.adsets.forEach(as => {
+        if (as.insight.severity in SEV_RANK) attention.push({ level: 'Ad Set', path: [c.name, as.name], node: as });
+        if (as.insight.severity === 'good') wins.push({ level: 'Ad Set', path: [c.name, as.name], node: as });
+        as.ads.forEach(ad => {
+          if (ad.insight.severity in SEV_RANK) attention.push({ level: 'Ad', path: [c.name, as.name, ad.name], node: ad });
+          if (ad.insight.severity === 'good') wins.push({ level: 'Ad', path: [c.name, as.name, ad.name], node: ad });
+        });
+      });
+    });
+    attention.sort((a, b) => SEV_RANK[a.node.insight.severity] - SEV_RANK[b.node.insight.severity] || b.node.spend - a.node.spend);
+    wins.sort((a, b) => b.node.spend - a.node.spend);
+    return { attention, wins };
+  }
+
+  function renderAttentionView() {
+    const { attention, wins } = collectFlatInsights(window._summary.campaigns);
+    window._attentionCount = attention.length;
+    const el = document.getElementById('view-attention');
+
+    function entryCard(item) {
+      const n = item.node;
+      return `
+        <div class="insight-card ${n.insight.severity}">
+          <div class="insight-icon"></div>
+          <div style="flex:1;">
+            <div class="attention-path">${item.level} · ${item.path.map(escapeHtml).join(' → ')}</div>
+            <div class="insight-title">${escapeHtml(n.insight.title)}</div>
+            <div class="insight-explanation">${escapeHtml(n.insight.explanation)}</div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:8px;">
+              <div class="insight-confidence">${escapeHtml(n.insight.confidence)}</div>
+              <div class="attention-stats">${fmtMoney(n.spend)} spend · ${n.cpa ? fmtMoney(n.cpa) : '—'} CPA</div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    el.innerHTML = `
+      <div class="panel-block">
+        <div class="panel-title-row"><div class="panel-title">Needs Attention (${attention.length})</div></div>
+        ${attention.length ? attention.map(entryCard).join('') : `<div class="no-insights">Nothing needs attention — every campaign, ad set, and ad is running clean.</div>`}
+      </div>
+      ${wins.length ? `
+        <div class="panel-block" style="margin-top:16px;">
+          <div class="panel-title-row"><div class="panel-title">Working Well (${wins.length})</div></div>
+          ${wins.map(entryCard).join('')}
+        </div>
+      ` : ''}
+    `;
+    // Update the tab count badge now that we know it
+    document.querySelectorAll('.vtab')[1].textContent = `Attention Needed${attention.length ? ` (${attention.length})` : ''}`;
+  }
+
+  function renderBreakdownView() {
+    const el = document.getElementById('view-breakdown');
+    el.innerHTML = `
+      <div class="panel-block">
+        <div class="panel-title-row"><div class="panel-title">Campaign → Ad Set → Ad breakdown</div></div>
+        <div class="table-controls">
+          <input type="text" class="search-input" id="campaign-search" placeholder="Search campaigns, ad sets, or ads…" oninput="renderCampaignTable()">
+          <select class="status-select" id="status-filter" onchange="renderCampaignTable()">
+            <option value="all">All statuses</option>
+            <option value="active">Active only</option>
+            <option value="paused">Paused only</option>
+          </select>
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th onclick="setSort('name')">Name${sortArrow('name')}</th>
+              <th>Status</th>
+              <th class="num-cell" onclick="setSort('spend')">Spend${sortArrow('spend')}</th>
+              <th class="num-cell" onclick="setSort('impressions')">Impr.${sortArrow('impressions')}</th>
+              <th class="num-cell" onclick="setSort('clicks')">Clicks${sortArrow('clicks')}</th>
+              <th class="num-cell" onclick="setSort('ctr')">CTR${sortArrow('ctr')}</th>
+              <th class="num-cell" onclick="setSort('conversions')">Conv.${sortArrow('conversions')}</th>
+              <th class="num-cell" onclick="setSort('cpa')">CPA${sortArrow('cpa')}</th>
+              <th class="num-cell" onclick="setSort('roas')">ROAS${sortArrow('roas')}</th>
+              <th>Why</th>
+            </tr>
+          </thead>
+          <tbody id="campaign-tbody"></tbody>
+        </table>
+      </div>
+    `;
+    renderCampaignTable();
+  }
+
+  function sortArrow(key) {
+    if (sortKey !== key) return '';
+    return sortDir === 1 ? ' ▲' : ' ▼';
+  }
+  function setSort(key) {
+    if (sortKey === key) sortDir *= -1; else { sortKey = key; sortDir = key === 'name' ? 1 : -1; }
+    renderBreakdownView();
+  }
+
+  function setPlatformTab(p) { activePlatformTab = p; loadAndRenderSummary(); }
+
+  const METRIC_INFO = {
+    spend: 'Total amount spent on ads in this period.',
+    revenue: 'Total revenue attributed to conversions from these ads.',
+    roas: 'Return on ad spend — revenue ÷ spend. Above 1x means profitable on ad cost alone.',
+    ctr: 'Click-through rate — % of people who saw the ad and clicked it.',
+    cpa: 'Cost per acquisition — average spend per conversion.',
+    conversions: 'Total tracked conversions (purchases, leads, etc.) in this period.',
+    reach: 'Unique people who saw the ad at least once. Currently tracked for Meta only — Google and TikTok don\'t report this the same way yet, so it shows N/A for those.',
+    frequency: 'Average times each person saw the ad (impressions ÷ reach). Rising frequency with falling CTR is a common fatigue signal. Meta only, same reason as Reach.',
+    cpm: 'Cost per 1,000 impressions — how expensive reach is right now.',
+    cpc: 'Cost per click — average amount paid each time someone clicks.',
+    engagement: 'Likes, comments, shares, and link clicks combined — Meta\'s own engagement rollup. Meta only.',
+    engagement_rate: 'Engagement as a % of impressions — how often people who saw the ad actually interacted with it. Meta only.',
+    video_views: 'Number of times a video ad was watched. Only non-zero for video creatives. Meta only.',
+    link_clicks: 'Clicks specifically on a link in the ad, a subset of total clicks. Meta only.',
+    sv_share: 'Search Impression Share — % of eligible searches your ad actually showed on (last 7 days). Google Search/Shopping/PMax campaigns only.',
+    sv_rank: '% of impressions lost because your bid or Quality Score wasn\'t competitive enough — a targeting/creative/landing-page problem, not a budget one.',
+    sv_budget: '% of impressions lost because the campaign ran out of daily budget — raise budget to capture this.',
+  };
+
+  function jumpToBreakdown(metricKey) {
+    sortKey = metricKey;
+    sortDir = -1;
+    switchView('breakdown');
+  }
+
+  function renderKpiCards() {
+    const t = window._summary.totals;
+    const d = window._summary.deltas;
+    const ts = window._summary.timeseries;
+    const sv = window._summary.searchVisibilityAvg;
+    const spark = key => sparklineSvg(ts.map(r => r[key]), '#a97b28');
+
+    const outcomesGroup = { label: 'Outcomes', cards: [
+      { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
+      { label: 'Revenue', val: fmtMoney(t.revenue), delta: d.revenue, key: 'revenue' },
+      { label: 'ROAS', val: t.roas ? t.roas.toFixed(2) + 'x' : '—', delta: d.roas, key: 'roas' },
+      { label: 'CPA', val: t.cpa ? fmtMoney(t.cpa) : '—', delta: d.cpa, key: 'cpa' },
+      { label: 'Conversions', val: fmtNum(t.conversions), delta: null, key: 'conversions' },
+    ]};
+
+    const groups = [outcomesGroup];
+
+    // Groups now genuinely branch by the selected platform tab instead of
+    // showing one static set with "(Meta)" tags scattered through it —
+    // Google doesn't have Reach/Frequency/Engagement at all, so those cards
+    // are dropped entirely rather than shown as permanent N/A clutter.
+    if (activePlatformTab === 'google') {
+      groups.push({ label: 'Efficiency', cards: [
+        { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
+        { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
+        { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
+      ]});
+      if (sv) {
+        groups.push({ label: 'Search Visibility', cards: [
+          { label: 'Impression Share', val: sv.search_impression_share.toFixed(1) + '%', delta: null, key: 'sv_share' },
+          { label: 'Lost to Rank/Bid', val: sv.search_rank_lost_impression_share.toFixed(1) + '%', delta: null, key: 'sv_rank' },
+          { label: 'Lost to Budget', val: sv.search_budget_lost_impression_share.toFixed(1) + '%', delta: null, key: 'sv_budget' },
+        ]});
+      }
+    } else if (activePlatformTab === 'meta') {
+      groups.push({ label: 'Efficiency & Delivery', cards: [
+        { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
+        { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
+        { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
+        { label: 'Reach', val: t.reach ? fmtNum(t.reach) : '—', delta: null, key: 'reach' },
+        { label: 'Frequency', val: t.frequency ? t.frequency.toFixed(2) + 'x' : '—', delta: null, key: 'frequency' },
+      ]});
+      groups.push({ label: 'Engagement', cards: [
+        { label: 'Engagements', val: t.engagement ? fmtNum(t.engagement) : '—', delta: null, key: 'engagement' },
+        { label: 'Engagement Rate', val: t.engagement_rate ? t.engagement_rate.toFixed(2) + '%' : '—', delta: null, key: 'engagement_rate' },
+        { label: 'Video Views', val: t.video_views ? fmtNum(t.video_views) : '—', delta: null, key: 'video_views' },
+        { label: 'Link Clicks', val: t.link_clicks ? fmtNum(t.link_clicks) : '—', delta: null, key: 'link_clicks' },
+      ]});
+    } else {
+      // "All" — mixed platforms, so metrics that don't apply everywhere
+      // stay tagged and show N/A rather than a blank/misleading zero
+      groups.push({ label: 'Efficiency & Delivery', cards: [
+        { label: 'CTR', val: t.ctr.toFixed(2) + '%', delta: d.ctr, key: 'ctr' },
+        { label: 'CPM', val: t.cpm ? fmtMoney(t.cpm) : '—', delta: null, key: 'cpm' },
+        { label: 'CPC', val: t.cpc ? fmtMoney(t.cpc) : '—', delta: null, key: 'cpc' },
+        { label: 'Reach (Meta)', val: t.reach ? fmtNum(t.reach) : 'N/A', delta: null, key: 'reach' },
+        { label: 'Frequency (Meta)', val: t.frequency ? t.frequency.toFixed(2) + 'x' : 'N/A', delta: null, key: 'frequency' },
+      ]});
+      groups.push({ label: 'Engagement (Meta)', cards: [
+        { label: 'Engagements', val: t.engagement ? fmtNum(t.engagement) : 'N/A', delta: null, key: 'engagement' },
+        { label: 'Engagement Rate', val: t.engagement_rate ? t.engagement_rate.toFixed(2) + '%' : 'N/A', delta: null, key: 'engagement_rate' },
+        { label: 'Video Views', val: t.video_views ? fmtNum(t.video_views) : 'N/A', delta: null, key: 'video_views' },
+        { label: 'Link Clicks', val: t.link_clicks ? fmtNum(t.link_clicks) : 'N/A', delta: null, key: 'link_clicks' },
+      ]});
+      if (sv) {
+        groups.push({ label: 'Search Visibility (Google)', cards: [
+          { label: 'Impression Share', val: sv.search_impression_share.toFixed(1) + '%', delta: null, key: 'sv_share' },
+          { label: 'Lost to Rank/Bid', val: sv.search_rank_lost_impression_share.toFixed(1) + '%', delta: null, key: 'sv_rank' },
+          { label: 'Lost to Budget', val: sv.search_budget_lost_impression_share.toFixed(1) + '%', delta: null, key: 'sv_budget' },
+        ]});
+      }
+    }
+
+    document.getElementById('kpi-groups').innerHTML = `
+      <div class="hero-kpi" style="margin-bottom:14px;">
+        <div class="hero-kpi-label">Total Spend — this period</div>
+        <div class="hero-kpi-value">${fmtMoney(t.spend)}</div>
+        <div class="hero-kpi-delta">${d.spend !== null ? (d.spend >= 0 ? '▲' : '▼') + ' ' + Math.abs(d.spend).toFixed(1) + '% vs previous period' : 'No previous period to compare yet'}</div>
+      </div>
+    ` + groups.map(g => `
+      <div class="kpi-group">
+        <div class="kpi-group-label">${g.label}</div>
+        <div class="kpi-grid">
+          ${g.cards.map(c => `
+            <div class="kpi-card" title="${escapeHtml(METRIC_INFO[c.key] || '')}" onclick="jumpToBreakdown('${c.key}')">
+              <div class="kpi-label">${c.label}</div>
+              <div class="kpi-value-row"><div class="kpi-value">${c.val}</div>${deltaHtml(c.delta)}</div>
+              ${c.key.startsWith('sv_') ? '' : spark(c.key)}
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  const SEVERITY_ICON2 = { concern: '⚠', good: '✓', neutral: 'ℹ', perfect: '✓', unknown: '•' };
+
+  function renderInsightCard(insight) {
+    const el = document.getElementById('brand-insight');
+    el.innerHTML = `
+      <div class="insight-card ${insight.severity}">
+        <div class="insight-icon"></div>
+        <div>
+          <div class="insight-title">${escapeHtml(insight.title)}</div>
+          ${insight.explanation ? `<div class="insight-explanation">${escapeHtml(insight.explanation)}</div>` : ''}
+          ${insight.confidence ? `<div class="insight-confidence">${escapeHtml(insight.confidence)}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  function insightBadge(insight) {
+    // The pill's own ::before dot (see .insight-badge CSS) already carries
+    // severity — no need to double up with an emoji glyph too.
+    return `<span class="insight-badge ${insight.severity}">${escapeHtml(insight.title)}</span>`;
+  }
+
+  // Expand/collapse state, keyed by a unique path string per row so it
+  // survives re-renders (range change, filtering, etc within the session)
+  let expandedPaths = new Set();
+  let expandedDetail = new Set(); // rows whose full insight explanation is shown
+
+  function toggleExpand(path) {
+    if (expandedPaths.has(path)) expandedPaths.delete(path); else expandedPaths.add(path);
+    renderCampaignTable();
+  }
+  function toggleDetail(path, ev) {
+    if (ev) ev.stopPropagation();
+    if (expandedDetail.has(path)) expandedDetail.delete(path); else expandedDetail.add(path);
+    renderCampaignTable();
+  }
+
+  function renderNodeRow(node, level, path, depth) {
+    const hasChildren = level === 'campaign' ? node.adsets?.length : level === 'adset' ? node.ads?.length : 0;
+    const isOpen = expandedPaths.has(path);
+    const indentClass = depth === 1 ? 'tree-indent-1' : depth === 2 ? 'tree-indent-2' : '';
+    const rows = [];
+
+    rows.push(`
+      <tr class="tree-row level-${level} ${hasChildren ? 'expandable' : ''}" ${hasChildren ? `onclick="toggleExpand('${path}')"` : ''}>
+        <td class="${indentClass}">
+          <div class="tree-name-cell">
+            ${hasChildren ? `<span class="tree-toggle ${isOpen ? 'open' : ''}">▶</span>` : '<span class="tree-toggle"></span>'}
+            ${level !== 'campaign' ? '' : platDot(node.platform)}
+            ${escapeHtml(node.name)}
+            ${level === 'campaign' && node.searchVisibility ? `<span class="sis-badge" title="Search Impression Share — % of eligible searches your ad showed on">IS ${node.searchVisibility.search_impression_share.toFixed(0)}%</span>` : ''}
+          </div>
+        </td>
+        <td><span class="status-badge ${node.status}"><span class="dot"></span>${node.status}</span></td>
+        <td class="num-cell">${fmtMoney(node.spend)}</td>
+        <td class="num-cell">${fmtNum(node.impressions)}</td>
+        <td class="num-cell">${fmtNum(node.clicks)}</td>
+        <td class="num-cell">${node.ctr.toFixed(2)}%</td>
+        <td class="num-cell">${fmtNum(node.conversions)}</td>
+        <td class="num-cell">${node.cpa ? fmtMoney(node.cpa) : '—'}</td>
+        <td class="num-cell">${node.roas ? node.roas.toFixed(2) + 'x' : '—'}</td>
+        <td onclick="toggleDetail('${path}', event)">${insightBadge(node.insight)}</td>
+      </tr>
+    `);
+
+    if (expandedDetail.has(path)) {
+      const deliveryBits = [];
+      if (node.reach) deliveryBits.push(`Reach: ${fmtNum(node.reach)}`);
+      if (node.frequency) deliveryBits.push(`Frequency: ${node.frequency.toFixed(2)}x`);
+      if (node.cpm) deliveryBits.push(`CPM: ${fmtMoney(node.cpm)}`);
+      if (node.cpc) deliveryBits.push(`CPC: ${fmtMoney(node.cpc)}`);
+      const deliveryLine = deliveryBits.length ? `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">${deliveryBits.join(' · ')}</div>` : '';
+
+      const engagementBits = [];
+      if (node.engagement) engagementBits.push(`Engagements: ${fmtNum(node.engagement)}`);
+      if (node.engagement_rate) engagementBits.push(`Engagement Rate: ${node.engagement_rate.toFixed(2)}%`);
+      if (node.video_views) engagementBits.push(`Video Views: ${fmtNum(node.video_views)}`);
+      if (node.link_clicks) engagementBits.push(`Link Clicks: ${fmtNum(node.link_clicks)}`);
+      const engagementLine = engagementBits.length ? `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">${engagementBits.join(' · ')}</div>` : '';
+
+      let rankingsLine = '';
+      if (level === 'ad' && node.rankings) {
+        const r = node.rankings;
+        const fmt = v => v ? v.replace(/_/g, ' ') : 'unknown';
+        rankingsLine = `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">Meta's own diagnostics — Quality: <b>${fmt(r.quality)}</b> · Engagement: <b>${fmt(r.engagement)}</b> · Conversion: <b>${fmt(r.conversion)}</b></div>`;
+      }
+
+      let searchVisLine = '';
+      if (level === 'campaign' && node.searchVisibility) {
+        const sv = node.searchVisibility;
+        searchVisLine = `<div style="margin-top:8px; font-family:var(--mono); font-size:10.5px;">Google Search Impression Share: <b>${sv.search_impression_share.toFixed(1)}%</b> — lost to rank/bid: ${sv.search_rank_lost_impression_share.toFixed(1)}%, lost to budget: ${sv.search_budget_lost_impression_share.toFixed(1)}%</div>`;
+      }
+
+      rows.push(`
+        <tr class="insight-detail-row">
+          <td colspan="10">
+            ${node.insight.explanation ? `${escapeHtml(node.insight.explanation)}${node.insight.confidence ? `<span class="conf-tag">${escapeHtml(node.insight.confidence)}</span>` : ''}` : 'No specific concern flagged for this period.'}
+            ${deliveryLine}
+            ${engagementLine}
+            ${rankingsLine}
+            ${searchVisLine}
+          </td>
+        </tr>
+      `);
+    }
+
+    if (isOpen) {
+      if (level === 'campaign') {
+        node.adsets.forEach((adset, i) => rows.push(renderNodeRow(adset, 'adset', `${path}>${i}`, depth + 1)));
+      } else if (level === 'adset') {
+        node.ads.forEach((ad, i) => rows.push(renderNodeRow(ad, 'ad', `${path}>${i}`, depth + 1)));
+      }
+    }
+    return rows.join('');
+  }
+
+  function renderCampaignTable() {
+    const tbody = document.getElementById('campaign-tbody');
+    if (!tbody) return; // breakdown view isn't currently mounted — nothing to update
+    const search = (document.getElementById('campaign-search')?.value || '').toLowerCase();
+    const statusFilter = document.getElementById('status-filter')?.value || 'all';
+    // No platform filter here anymore — the summary itself is already
+    // platform-scoped server-side (see loadAndRenderSummary), so filtering
+    // again client-side was dead weight left over from before that fix.
+    let campaigns = [...window._summary.campaigns];
+    if (statusFilter !== 'all') campaigns = campaigns.filter(c => c.status === statusFilter);
+    if (search) {
+      // Searching matches campaign, ad set, OR ad names — auto-expand
+      // matches so results aren't hidden inside a collapsed tree
+      campaigns = campaigns.filter(c => {
+        const inCamp = c.name.toLowerCase().includes(search);
+        const inChildren = c.adsets.some(as => as.name.toLowerCase().includes(search) || as.ads.some(ad => ad.name.toLowerCase().includes(search)));
+        if (inChildren) expandedPaths.add(String(window._summary.campaigns.indexOf(c)));
+        return inCamp || inChildren;
+      });
+    }
+
+    // Sorting — clicking a column header, or a KPI card on Overview via
+    // jumpToBreakdown(), sets sortKey/sortDir and this actually applies it
+    // now (previously these were set but never read anywhere).
+    campaigns.sort((a, b) => {
+      const av = a[sortKey], bv = b[sortKey];
+      if (sortKey === 'name') return sortDir * String(av).localeCompare(String(bv));
+      const an = av === null || av === undefined ? -Infinity : av;
+      const bn = bv === null || bv === undefined ? -Infinity : bv;
+      return sortDir * (an - bn);
+    });
+
+    if (!campaigns.length) {
+      tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--ink-faint);font-family:var(--mono);padding:30px;">No campaigns match</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = campaigns.map((c) => {
+      const path = String(window._summary.campaigns.indexOf(c));
+      return renderNodeRow(c, 'campaign', path, 0);
+    }).join('');
+  }
+
+  function setTrendPair(pair) { trendMetricPair = pair; renderClientDetail(window._client, window._summary); }
+
+  function renderTrendChart() {
+    const ts = window._summary.timeseries;
+    const client = window._client;
+    const ctx = document.getElementById('trend-chart');
+    if (trendChart) trendChart.destroy();
+
+    let pairs, extraDatasets = [], tooltipFmt = fmtNum;
+    if (trendMetricPair === 'spend_revenue') {
+      pairs = [{ k: 'spend', label: 'Spend', color: '#a97b28' }, { k: 'revenue', label: 'Revenue', color: '#3f7a58' }];
+      tooltipFmt = fmtMoney;
+    } else if (trendMetricPair === 'clicks_conversions') {
+      pairs = [{ k: 'clicks', label: 'Clicks', color: '#4a6fa8' }, { k: 'conversions', label: 'Conversions', color: '#a97b28' }];
+    } else {
+      // "vs Goal" (pulled from the Drift reference) — actual metric plotted
+      // against a flat reference line for the client's own stated target,
+      // not just a number in a card. Prioritizes CPA if both targets are
+      // set, since it's the more commonly tracked of the two.
+      const useRoas = !client.target_cpa && client.target_roas;
+      const metricKey = useRoas ? 'roas' : 'cpa';
+      const targetVal = useRoas ? client.target_roas : client.target_cpa;
+      const label = useRoas ? 'ROAS' : 'CPA';
+      pairs = [{ k: metricKey, label: `Actual ${label}`, color: '#a97b28' }];
+      extraDatasets = [{
+        label: `Target ${label}`, data: ts.map(() => targetVal), borderColor: '#9b96a5',
+        borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0, yAxisID: 'y',
+      }];
+      tooltipFmt = useRoas ? (v) => v.toFixed(2) + 'x' : fmtMoney;
+    }
+
+    trendChart = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ts.map(t => t.date),
+        datasets: [
+          ...pairs.map((p, i) => ({
+            label: p.label, data: ts.map(t => t[p.k]), borderColor: p.color,
+            backgroundColor: i === 0 ? p.color + '1f' : 'transparent', fill: i === 0, tension: 0.3,
+            yAxisID: (trendMetricPair !== 'vs_goal' && i === 1) ? 'y1' : 'y',
+          })),
+          ...extraDatasets,
+        ],
+      },
+      options: {
+        responsive: true, interaction: { mode: 'index', intersect: false },
+        scales: {
+          x: { ticks: { color: '#9b96a5', maxTicksLimit: 10 }, grid: { color: '#ececee' } },
+          y: { position: 'left', ticks: { color: '#9b96a5' }, grid: { color: '#ececee' } },
+          y1: { position: 'right', ticks: { color: '#9b96a5' }, grid: { display: false } },
+        },
+        plugins: {
+          legend: { labels: { color: '#1e1b26', font: { family: 'IBM Plex Sans' } } },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => `${ctx.dataset.label}: ${tooltipFmt(ctx.parsed.y)}`,
+            },
+          },
+        },
+      },
+    });
+  }
+
+  function renderDonutChart() {
+    const spend = window._summary.platformSpend;
+    const labels = Object.keys(spend);
+    const values = Object.values(spend);
+    const colors = labels.map(l => PLATFORM_COLORS[l] || '#888');
+    const ctx = document.getElementById('donut-chart');
+    if (donutChart) donutChart.destroy();
+    if (!labels.length) {
+      document.getElementById('donut-legend').innerHTML = `<div style="font-family:var(--mono);font-size:11px;color:var(--ink-faint);text-align:center;">No spend data yet</div>`;
+      return;
+    }
+    donutChart = new Chart(ctx, {
+      type: 'doughnut',
+      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 2 }] },
+      options: {
+        onClick: (evt, elements) => {
+          if (!elements.length) return;
+          const platform = labels[elements[0].index];
+          activePlatformTab = platform;
+          switchView('breakdown');
+        },
+        onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: (ctx) => {
+                const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                const pct = ((ctx.parsed / total) * 100).toFixed(0);
+                return `${ctx.label}: ${fmtMoney(ctx.parsed)} (${pct}%)`;
+              },
+            },
+          },
+        },
+        cutout: '68%',
+      },
+    });
+    const total = values.reduce((a, b) => a + b, 0);
+    document.getElementById('donut-legend').innerHTML = labels.map((l, i) => `
+      <div class="legend-row"><div class="legend-left"><span class="legend-dot" style="background:${colors[i]}"></span>${l}</div><div class="legend-val">${fmtMoney(values[i])} · ${((values[i] / total) * 100).toFixed(0)}%</div></div>
+    `).join('');
+  }
+
+  // Radar reads this period as a ratio to last period on each axis, not
+  // an absolute scale — reuses the same totals/deltas the KPI cards
+  // already have, just as a shape instead of four separate numbers.
+  // 50 = flat vs last period, 100 = doubled, 0 = zero. The dashed ring
+  // at 50 is the "same as last period" reference — anything bulging past
+  // it improved, anything pulled in shrank.
+  function renderRadarChart() {
+    const d = window._summary.deltas;
+    const ctx = document.getElementById('radar-chart');
+    if (radarChart) radarChart.destroy();
+    // pctChange-style deltas are already period-over-period % — convert
+    // to the radar's 50=flat scale. CPA is inverted (lower is better) so
+    // "improving" always means "bulging outward" on every axis alike.
+    const toRadarVal = (deltaPct, invert) => {
+      if (deltaPct === null || deltaPct === undefined) return 50;
+      const signed = invert ? -deltaPct : deltaPct;
+      return Math.max(0, Math.min(100, 50 + signed / 2));
+    };
+    const axes = [
+      { label: 'CTR', val: toRadarVal(d.ctr, false) },
+      { label: 'ROAS', val: toRadarVal(d.roas, false) },
+      { label: 'CPA Efficiency', val: toRadarVal(d.cpa, true) },
+      { label: 'Conversions', val: toRadarVal(d.conversions, false) },
+    ];
+    radarChart = new Chart(ctx, {
+      type: 'radar',
+      data: {
+        labels: axes.map(a => a.label),
+        datasets: [{
+          label: 'This period', data: axes.map(a => a.val),
+          borderColor: '#a97b28', backgroundColor: 'rgba(169,123,40,0.15)', pointBackgroundColor: '#a97b28',
+        }, {
+          label: 'Same as last period', data: axes.map(() => 50),
+          borderColor: '#d8d5db', borderDash: [4, 4], pointRadius: 0, backgroundColor: 'transparent',
+        }],
+      },
+      options: {
+        scales: {
+          r: {
+            min: 0, max: 100, ticks: { display: false }, grid: { color: '#ececee' },
+            pointLabels: { color: '#6b6577', font: { family: 'IBM Plex Mono', size: 10 } },
+          },
+        },
+        plugins: {
+          legend: { display: false },
+          tooltip: { callbacks: { label: (ctx) => ctx.dataset.label === 'This period' ? `${ctx.label}: ${ctx.parsed.r > 50 ? 'improving' : ctx.parsed.r < 50 ? 'declining' : 'flat'} vs last period` : '' } },
+        },
+      },
+    });
+  }
+
+  function setRange(days) {
+    currentRange = days;
+    if (activeClientId) loadAndRenderSummary(); else showPortfolio();
+  }
+
+  async function syncAllAccounts(clientId) {
+    const fresh = await (await fetch('/api/clients')).json();
+    const client = fresh.find(c => c.id === clientId);
+    for (const a of client.ad_accounts) await fetch(`/api/ad-accounts/${a.id}/sync`, { method: 'POST' });
+    await loadClients();
+    if (activeClientId === clientId) selectClient(clientId);
+  }
+
+  function openClientModal() { document.getElementById('client-modal-overlay').classList.add('open'); }
+  function closeClientModal() { document.getElementById('client-modal-overlay').classList.remove('open'); }
+
+  async function saveClient() {
+    const name = document.getElementById('new-client-name').value.trim();
+    const notes = document.getElementById('new-client-notes').value.trim();
+    if (!name) return;
+    const res = await (await fetch('/api/clients', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, notes }) })).json();
+    document.getElementById('new-client-name').value = '';
+    document.getElementById('new-client-notes').value = '';
+    closeClientModal();
+    await loadClients();
+    selectClient(res.id);
+  }
+
+  let accountModalClientId = null;
+  function openAccountModal(clientId) { accountModalClientId = clientId; document.getElementById('account-modal-overlay').classList.add('open'); toggleGoogleFields(); }
+  function closeAccountModal() { document.getElementById('account-modal-overlay').classList.remove('open'); }
+
+  let goalsModalClientId = null;
+  function openGoalsModal(clientId) {
+    goalsModalClientId = clientId;
+    const c = clients.find(c => c.id === clientId) || window._client;
+    document.getElementById('goal-target-cpa').value = c && c.target_cpa != null ? c.target_cpa : '';
+    document.getElementById('goal-target-roas').value = c && c.target_roas != null ? c.target_roas : '';
+    document.getElementById('goal-monthly-budget').value = c && c.monthly_budget != null ? c.monthly_budget : '';
+    document.getElementById('goal-webhook-url').value = c && c.webhook_url ? c.webhook_url : '';
+    document.getElementById('goal-management-fee-pct').value = c && c.management_fee_pct != null ? c.management_fee_pct : '';
+    document.getElementById('goals-modal-overlay').classList.add('open');
+  }
+  function closeGoalsModal() { document.getElementById('goals-modal-overlay').classList.remove('open'); }
+  async function saveGoals() {
+    const target_cpa = document.getElementById('goal-target-cpa').value.trim();
+    const target_roas = document.getElementById('goal-target-roas').value.trim();
+    const monthly_budget = document.getElementById('goal-monthly-budget').value.trim();
+    const webhook_url = document.getElementById('goal-webhook-url').value.trim();
+    const management_fee_pct = document.getElementById('goal-management-fee-pct').value.trim();
+    await fetch(`/api/clients/${goalsModalClientId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        target_cpa: target_cpa === '' ? null : target_cpa,
+        target_roas: target_roas === '' ? null : target_roas,
+        monthly_budget: monthly_budget === '' ? null : monthly_budget,
+        webhook_url: webhook_url === '' ? null : webhook_url,
+        management_fee_pct: management_fee_pct === '' ? null : management_fee_pct,
+      }),
+    });
+    closeGoalsModal();
+    await loadClients();
+    selectClient(goalsModalClientId);
+  }
+
+  // Renders the pacing bar + status line for the Goals & Pacing panel.
+  // Hand-rolled SVG ring, no chart library — stroke-dasharray trick for
+  // a circular progress indicator. Small enough to inline three of them.
+  function forecastRingSvg(pct, color) {
+    const clamped = Math.max(0, Math.min(100, pct));
+    const r = 24, circ = 2 * Math.PI * r;
+    const offset = circ * (1 - clamped / 100);
+    return `<svg width="60" height="60" viewBox="0 0 60 60">
+      <circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--panel-3)" stroke-width="6"/>
+      <circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="6"
+        stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"
+        transform="rotate(-90 30 30)" style="transition:stroke-dashoffset 0.4s;"/>
+    </svg>`;
+  }
+
+  // Three checkpoints of the same pacing math side by side (pulled from
+  // the Haven Diagnostics reference) instead of one bar — budget used,
+  // month elapsed, and where spend is headed if the current rate holds.
+  function renderPacing(p) {
+    const paceColor = p.status === 'overpacing' ? 'var(--rust)' : p.status === 'underpacing' ? 'var(--google)' : 'var(--sage)';
+    const label = p.status === 'overpacing' ? 'Overpacing' : p.status === 'underpacing' ? 'Underpacing' : 'On track';
+    const projectedPct = (p.projectedSpend / p.monthlyBudget) * 100;
+    return `
+      <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-bottom:12px;">
+        Day ${p.dayOfMonth} of ${p.daysInMonth} · ${fmtMoney(p.spendMTD)} of ${fmtMoney(p.monthlyBudget)} spent · <span style="color:${paceColor};font-weight:600;">${label}</span>
+      </div>
+      <div class="forecast-rings">
+        <div class="forecast-ring-item">
+          ${forecastRingSvg(p.pctOfBudgetUsed, 'var(--brass)')}
+          <div class="forecast-ring-pct">${p.pctOfBudgetUsed.toFixed(0)}%</div>
+          <div class="forecast-ring-label">Budget used</div>
+        </div>
+        <div class="forecast-ring-item">
+          ${forecastRingSvg(p.pctOfMonthElapsed, 'var(--ink-faint)')}
+          <div class="forecast-ring-pct">${p.pctOfMonthElapsed.toFixed(0)}%</div>
+          <div class="forecast-ring-label">Month elapsed</div>
+        </div>
+        <div class="forecast-ring-item">
+          ${forecastRingSvg(projectedPct, paceColor)}
+          <div class="forecast-ring-pct" style="color:${paceColor};">${projectedPct.toFixed(0)}%</div>
+          <div class="forecast-ring-label">Projected month-end</div>
+        </div>
+      </div>
+    `;
+  }
+
+  // ---------- Rules & recommended actions ----------
+  let rulesModalClientId = null;
+  function openRulesModal(clientId) {
+    rulesModalClientId = clientId;
+    renderRulesList();
+    document.getElementById('rules-modal-overlay').classList.add('open');
+  }
+  function closeRulesModal() { document.getElementById('rules-modal-overlay').classList.remove('open'); }
+
+  async function renderRulesList() {
+    const rules = await (await fetch(`/api/clients/${rulesModalClientId}/rules`)).json();
+    document.getElementById('rules-list').innerHTML = rules.length ? rules.map(r => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px;">
+        <span>${escapeHtml(r.name)} <span style="color:var(--ink-faint);font-family:var(--mono);">→ ${escapeHtml(r.action)}</span></span>
+        <span style="cursor:pointer;color:var(--rust);font-family:var(--mono);font-size:10px;" onclick="removeRule(${r.id})">remove</span>
+      </div>
+    `).join('') : `<div class="modal-hint">No rules yet.</div>`;
+  }
+
+  async function addRule() {
+    const name = document.getElementById('rule-name').value.trim();
+    const metric = document.getElementById('rule-metric').value;
+    const operator = document.getElementById('rule-operator').value;
+    const value = document.getElementById('rule-value').value.trim();
+    const action = document.getElementById('rule-action').value.trim();
+    if (!value) { alert('Threshold value required'); return; }
+    const res = await fetch(`/api/clients/${rulesModalClientId}/rules`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, metric, operator, value, action: action || 'Review this campaign' }),
+    });
+    if (!res.ok) { alert((await res.json()).error); return; }
+    document.getElementById('rule-name').value = '';
+    document.getElementById('rule-value').value = '';
+    document.getElementById('rule-action').value = '';
+    renderRulesList();
+  }
+
+  async function removeRule(id) {
+    await fetch(`/api/rules/${id}`, { method: 'DELETE' });
+    renderRulesList();
+  }
+
+  async function resolveAction(id, status) {
+    await fetch(`/api/actions/${id}/resolve`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    selectClient(activeClientId);
+  }
+
+  function renderRecommendedActions(actions) {
+    if (!actions.length) return '';
+    return `
+      <div class="insights-panel">
+        <div class="panel-block">
+          <div class="panel-title-row"><div class="panel-title">Recommended Actions — from your rules</div></div>
+          ${actions.map(a => `
+            <div class="insight-card neutral" style="margin-bottom:8px;justify-content:space-between;">
+              <div style="display:flex;gap:13px;">
+                <div class="insight-icon"></div>
+                <div>
+                  <div class="insight-title">${escapeHtml(a.action)}</div>
+                  <div class="insight-explanation">${escapeHtml(a.message)}</div>
+                </div>
+              </div>
+              <div style="display:flex;gap:8px;align-items:flex-start;flex-shrink:0;">
+                <span style="cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--sage);" onclick="resolveAction(${a.id}, 'done')">done</span>
+                <span style="cursor:pointer;font-family:var(--mono);font-size:10px;color:var(--ink-faint);" onclick="resolveAction(${a.id}, 'dismissed')">dismiss</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    `;
+  }
+
+  function toggleGoogleFields() {
+    const platform = document.getElementById('new-account-platform').value;
+    document.getElementById('google-fields').style.display = platform === 'google' ? 'block' : 'none';
+    document.getElementById('tiktok-hint').style.display = platform === 'tiktok' ? 'block' : 'none';
+  }
+
+  async function saveAccount() {
+    const platform = document.getElementById('new-account-platform').value;
+    const acctId = document.getElementById('new-account-id').value.trim() || `demo_${Date.now()}`;
+    const label = document.getElementById('new-account-label').value.trim() || acctId;
+    const token = document.getElementById('new-account-token').value.trim();
+    const devToken = document.getElementById('new-account-dev-token').value.trim();
+    const managerId = document.getElementById('new-account-manager-id').value.trim();
+    const clientId = document.getElementById('new-account-client-id').value.trim();
+    const clientSecret = document.getElementById('new-account-client-secret').value.trim();
+    const refreshToken = document.getElementById('new-account-refresh-token').value.trim();
+    const res = await (await fetch(`/api/clients/${accountModalClientId}/ad-accounts`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        platform, external_account_id: acctId, label,
+        access_token: token || undefined,
+        developer_token: devToken || undefined,
+        manager_customer_id: managerId || undefined,
+        client_id: clientId || undefined,
+        client_secret: clientSecret || undefined,
+        refresh_token: refreshToken || undefined,
+      }),
+    })).json();
+    document.getElementById('new-account-id').value = '';
+    document.getElementById('new-account-label').value = '';
+    document.getElementById('new-account-token').value = '';
+    document.getElementById('new-account-dev-token').value = '';
+    document.getElementById('new-account-manager-id').value = '';
+    document.getElementById('new-account-client-id').value = '';
+    document.getElementById('new-account-client-secret').value = '';
+    document.getElementById('new-account-refresh-token').value = '';
+    closeAccountModal();
+    await fetch(`/api/ad-accounts/${res.id}/sync`, { method: 'POST' });
+    await loadClients();
+    selectClient(accountModalClientId);
+  }
+
+  // ---------- Auth ----------
+  let currentUser = null;
+  let authMode = 'login'; // or 'setup'
+
+  async function boot() {
+    const { needed } = await (await fetch('/api/auth/setup-needed')).json();
+    if (needed) return showAuthGate('setup');
+    const meRes = await fetch('/api/auth/me');
+    if (meRes.status === 401) return showAuthGate('login');
+    currentUser = await meRes.json();
+    document.getElementById('auth-gate').classList.remove('open');
+    renderUserFooter();
+    loadClients().then(showPortfolio);
+  }
+
+  function showAuthGate(mode) {
+    authMode = mode;
+    document.getElementById('auth-title').textContent = mode === 'setup' ? 'Create your admin account' : 'Sign in';
+    document.getElementById('auth-hint').textContent = mode === 'setup'
+      ? 'First run — this creates the one admin account for this install. Runs locally, nothing leaves this machine.'
+      : 'ARGUS Pulse — this account only exists on this machine.';
+    document.getElementById('auth-submit-btn').textContent = mode === 'setup' ? 'Create account' : 'Sign in';
+    document.getElementById('auth-error').style.display = 'none';
+    document.getElementById('auth-gate').classList.add('open');
+  }
+
+  async function submitAuth() {
+    const username = document.getElementById('auth-username').value.trim();
+    const password = document.getElementById('auth-password').value;
+    const errEl = document.getElementById('auth-error');
+    errEl.style.display = 'none';
+    const res = await fetch(authMode === 'setup' ? '/api/auth/setup' : '/api/auth/login', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const body = await res.json();
+    if (!res.ok) { errEl.textContent = body.error; errEl.style.display = 'block'; return; }
+    currentUser = body.user;
+    document.getElementById('auth-gate').classList.remove('open');
+    document.getElementById('auth-username').value = '';
+    document.getElementById('auth-password').value = '';
+    renderUserFooter();
+    loadClients().then(showPortfolio);
+  }
+
+  async function logout() {
+    await fetch('/api/auth/logout', { method: 'POST' });
+    currentUser = null;
+    showAuthGate('login');
+  }
+
+  function renderUserFooter() {
+    document.getElementById('user-footer').innerHTML = `
+      <span>${escapeHtml(currentUser.username)} · ${currentUser.role}</span>
+      <span style="display:flex;gap:10px;">
+        ${currentUser.role === 'admin' ? `<span style="cursor:pointer;" onclick="openUsersModal()">Users</span>` : ''}
+        <span style="cursor:pointer;" onclick="logout()">Logout</span>
+      </span>
+    `;
+  }
+
+  function openUsersModal() {
+    renderUsersList();
+    document.getElementById('users-modal-overlay').classList.add('open');
+  }
+  function closeUsersModal() { document.getElementById('users-modal-overlay').classList.remove('open'); }
+
+  async function renderUsersList() {
+    const users = await (await fetch('/api/auth/users')).json();
+    document.getElementById('users-list').innerHTML = users.map(u => `
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12.5px;">
+        <span>${escapeHtml(u.username)} <span style="color:var(--ink-faint);font-family:var(--mono);font-size:10px;">${u.role}</span></span>
+        ${u.id !== currentUser.id ? `<span style="cursor:pointer;color:var(--rust);font-family:var(--mono);font-size:10px;" onclick="removeUser(${u.id})">remove</span>` : ''}
+      </div>
+    `).join('');
+  }
+
+  async function addUser() {
+    const username = document.getElementById('new-user-username').value.trim();
+    const password = document.getElementById('new-user-password').value;
+    const role = document.getElementById('new-user-role').value;
+    const res = await fetch('/api/auth/users', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, role }),
+    });
+    if (!res.ok) { alert((await res.json()).error); return; }
+    document.getElementById('new-user-username').value = '';
+    document.getElementById('new-user-password').value = '';
+    renderUsersList();
+  }
+
+  async function removeUser(id) {
+    await fetch(`/api/auth/users/${id}`, { method: 'DELETE' });
+    renderUsersList();
+  }
+
+  // A 401 from any /api call (session expired, logged out elsewhere) drops
+  // straight back to the login gate instead of the app silently breaking.
+  const _origFetch = window.fetch;
+  window.fetch = async (...args) => {
+    const res = await _origFetch(...args);
+    if (res.status === 401 && !String(args[0]).includes('/api/auth/')) showAuthGate('login');
+    return res;
+  };
+
+  boot();
+</script>
+</body>
+</html>
