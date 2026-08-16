@@ -1,3 +1,4 @@
+<!-- ARGUS_BUILD_MARKER: v9 — one-view consolidation, radar fix, spacing scale, taste-skill audit. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -211,10 +212,10 @@
   .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
   .legend-val { color: var(--ink-faint); }
 
-  .view-tabs { display: flex; gap: var(--sp-1); background: var(--panel-3); border-radius: 10px; padding: var(--sp-1); margin-bottom: var(--sp-5); width: fit-content; }
-  .vtab { font-family: var(--body); font-weight: 600; font-size: 12.5px; color: var(--ink-faint); padding: var(--sp-2) var(--sp-4); border-radius: 7px; cursor: pointer; transition: color 0.15s, background 0.15s; }
-  .vtab.active { background: var(--panel); color: var(--brass); box-shadow: var(--shadow-sm); }
-  .view-container { display: none; }
+  /* view-tabs / vtab removed with the tab system — was Overview /
+     Attention / Breakdown as three switched screens; now one page. */
+  /* view-container class removed with the tab system — sections are
+     always visible now, rendered in sequence on one page. */
 
   .attention-path { font-family: var(--mono); font-size: 10px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: var(--sp-1); }
   .attention-stats { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
@@ -339,7 +340,7 @@
     .sidebar, .top-actions .sync-btn, .top-actions button[onclick*="openAccountModal"],
     .top-actions button[onclick*="openGoalsModal"], .top-actions button[onclick*="openRulesModal"],
     .top-actions button[onclick*="window.print"],
-    .view-tabs, .ctoggle-btn,
+    .ctoggle-btn,
     .range-row, .platform-tabs, .modal-overlay, .search-input, .status-select,
     .chart-toggle { display: none !important; }
     body { background: #fff; }
@@ -491,7 +492,8 @@
   let currentRange = 30;
   let activePlatformTab = 'all';
   let trendMetricPair = 'spend_revenue';
-  let currentView = 'overview';
+  // currentView removed — was tab-switch state (overview/attention/
+  // breakdown), no longer needed now that all three render as one page.
   const PLATFORM_COLORS = { meta: '#4a6fa8', google: '#a3841f', tiktok: '#a24b6b' };
 
   function fmtMoney(n) {
@@ -665,32 +667,26 @@
           <div class="account-pill">${platDot(a.platform)}${escapeHtml(a.label)} · ${a.last_sync_mode === 'live' ? '<span style="color:var(--sage)">live</span>' : a.last_sync_mode === 'mock' ? '<span>demo</span>' : '<span style="color:var(--ink-faint)">unsynced</span>'} · ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}</div>
         `).join('') : '<div class="account-pill">No ad accounts connected yet</div>'}
       </div>
-      <div class="view-tabs">
-        <div class="vtab ${currentView === 'overview' ? 'active' : ''}" onclick="switchView('overview')">Overview</div>
-        <div class="vtab ${currentView === 'attention' ? 'active' : ''}" onclick="switchView('attention')">Attention Needed${window._attentionCount ? ` (${window._attentionCount})` : ''}</div>
-        <div class="vtab ${currentView === 'breakdown' ? 'active' : ''}" onclick="switchView('breakdown')">Full Breakdown</div>
-      </div>
-
-      <div id="view-overview" class="view-container"></div>
-      <div id="view-attention" class="view-container"></div>
-      <div id="view-breakdown" class="view-container"></div>
+      <div id="view-overview"></div>
+      <div id="view-attention"></div>
+      <div id="view-breakdown"></div>
       </div>
     `;
 
-    renderView(currentView);
+    renderView();
   }
 
-  function renderView(view) {
-    document.querySelectorAll('.vtab').forEach((el, i) => el.classList.toggle('active', ['overview', 'attention', 'breakdown'][i] === view));
-    document.querySelectorAll('.view-container').forEach(el => el.style.display = 'none');
-    document.getElementById(`view-${view}`).style.display = 'block';
-
-    if (view === 'overview') renderOverviewView();
-    else if (view === 'attention') renderAttentionView();
-    else if (view === 'breakdown') renderBreakdownView();
+  // Was three tab-switched screens (Overview / Attention / Breakdown) —
+  // clicking between them to see different facets of the same client was
+  // exactly the kind of clutter being complained about. Now everything
+  // renders as one continuous page; each section still has its own
+  // panel-title as a natural divider so it reads as organized sections,
+  // not one long undifferentiated wall.
+  function renderView() {
+    renderOverviewView();
+    renderAttentionView();
+    renderBreakdownView();
   }
-
-  function switchView(view) { currentView = view; renderView(view); }
 
   function renderOverviewView() {
     const el = document.getElementById('view-overview');
@@ -735,7 +731,7 @@
           <div class="panel-block">
             <div class="panel-title-row">
               <div class="panel-title">Top Issues Right Now</div>
-              <div class="ctoggle-btn" onclick="switchView('attention')">View all ${attention.length} →</div>
+              <div class="ctoggle-btn" onclick="document.getElementById('view-attention').scrollIntoView({behavior:'smooth',block:'start'})">View all ${attention.length} →</div>
             </div>
             ${topIssues.map(item => `
               <div class="insight-card ${item.node.insight.severity}">
@@ -860,8 +856,6 @@
         </div>
       ` : ''}
     `;
-    // Update the tab count badge now that we know it
-    document.querySelectorAll('.vtab')[1].textContent = `Attention Needed${attention.length ? ` (${attention.length})` : ''}`;
   }
 
   function renderBreakdownView() {
@@ -908,7 +902,7 @@
     renderBreakdownView();
   }
 
-  function setPlatformTab(p) { activePlatformTab = p; loadAndRenderSummary(); }
+  function setPlatformTab(p) { activePlatformTab = p; return loadAndRenderSummary(); }
 
   const METRIC_INFO = {
     spend: 'Total amount spent on ads in this period.',
@@ -933,7 +927,8 @@
   function jumpToBreakdown(metricKey) {
     sortKey = metricKey;
     sortDir = -1;
-    switchView('breakdown');
+    renderCampaignTable();
+    document.getElementById('view-breakdown').scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   function renderKpiCards() {
@@ -1270,8 +1265,9 @@
         onClick: (evt, elements) => {
           if (!elements.length) return;
           const platform = labels[elements[0].index];
-          activePlatformTab = platform;
-          switchView('breakdown');
+          setPlatformTab(platform).then(() => {
+            document.getElementById('view-breakdown')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          });
         },
         onHover: (evt, elements) => { evt.native.target.style.cursor = elements.length ? 'pointer' : 'default'; },
         plugins: {
@@ -1308,10 +1304,18 @@
     // pctChange-style deltas are already period-over-period % — convert
     // to the radar's 50=flat scale. CPA is inverted (lower is better) so
     // "improving" always means "bulging outward" on every axis alike.
+    // Tested empirically against realistic deltas before shipping: the
+    // original /2 divisor needed a 100%+ swing to move visibly off the
+    // 50 baseline, so with normal single-digit-to-low-double-digit ad
+    // metric deltas every axis clustered at 46-48 — a flat, meaningless
+    // near-circle. 1:1 (delta directly added to 50) is what actually
+    // shows something at realistic magnitudes: -8% reads as a visible
+    // dent, +15% as a clear bulge, +30%+ as a strong one, without
+    // saturating to the edge until something genuinely dramatic (60%+).
     const toRadarVal = (deltaPct, invert) => {
       if (deltaPct === null || deltaPct === undefined) return 50;
       const signed = invert ? -deltaPct : deltaPct;
-      return Math.max(0, Math.min(100, 50 + signed / 2));
+      return Math.max(0, Math.min(100, 50 + signed));
     };
     const axes = [
       { label: 'CTR', val: toRadarVal(d.ctr, false) },
