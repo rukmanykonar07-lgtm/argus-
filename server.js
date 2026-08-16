@@ -35,6 +35,29 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+// Basic brute-force lockout — the login route had zero rate limiting.
+// Fine on a truly local-only machine, not fine the moment this runs on a
+// shared network (the README explicitly documents that as a real
+// possibility). In-memory, keyed by username — matches the same
+// "restarts rarely, in-memory is fine" reasoning as sessions in lib/auth.js.
+const failedLogins = new Map(); // username -> { count, lockedUntil }
+const MAX_ATTEMPTS = 5;
+const LOCKOUT_MS = 5 * 60 * 1000;
+function isLockedOut(username) {
+  const entry = failedLogins.get(username.toLowerCase());
+  return !!(entry && entry.lockedUntil && Date.now() < entry.lockedUntil);
+}
+function recordFailedLogin(username) {
+  const key = username.toLowerCase();
+  const entry = failedLogins.get(key) || { count: 0, lockedUntil: null };
+  entry.count += 1;
+  if (entry.count >= MAX_ATTEMPTS) entry.lockedUntil = Date.now() + LOCKOUT_MS;
+  failedLogins.set(key, entry);
+}
+function clearFailedLogins(username) {
+  failedLogins.delete(username.toLowerCase());
+}
+
 // First-run: no users exist yet, so anyone can create the first account —
 // it's always granted admin (see store.addUser). After that, setup is
 // closed; only an existing admin can add more users via /api/auth/users.
@@ -54,8 +77,10 @@ app.get('/api/auth/setup-needed', (req, res) => {
 
 app.post('/api/auth/login', (req, res) => {
   const { username, password } = req.body;
+  if (isLockedOut(username || '')) return res.status(429).json({ error: 'Too many failed attempts — wait a few minutes and try again.' });
   const user = store.verifyUserPassword(username || '', password || '');
-  if (!user) return res.status(401).json({ error: 'wrong username or password' });
+  if (!user) { recordFailedLogin(username || ''); return res.status(401).json({ error: 'wrong username or password' }); }
+  clearFailedLogins(username || '');
   const token = createSession(user.id);
   res.setHeader('Set-Cookie', `${SESSION_COOKIE}=${token}; HttpOnly; Path=/; Max-Age=2592000; SameSite=Lax`);
   res.json({ ok: true, user: { id: user.id, username: user.username, role: user.role } });
@@ -124,6 +149,7 @@ app.post('/api/clients/:clientId/ad-accounts', (req, res) => {
     client_id, client_secret, refresh_token,
   } = req.body;
   if (!platform || !external_account_id) return res.status(400).json({ error: 'platform and external_account_id required' });
+  if (!store.getClientById(req.params.clientId)) return res.status(404).json({ error: 'client not found' });
   const id = store.addAdAccount(req.params.clientId, {
     platform, external_account_id, label, access_token, developer_token, manager_customer_id,
     client_id, client_secret, refresh_token,
@@ -138,6 +164,15 @@ app.post('/api/clients/:clientId/ad-accounts', (req, res) => {
 async function syncAccount(accountId) {
   const account = store.getAdAccount(accountId);
   if (!account) throw Object.assign(new Error('ad account not found'), { status: 404 });
+
+  // A stored credential existing-but-undecryptable must never look like
+  // "mock mode because nothing was configured" — that would mean real ad
+  // data silently stops syncing with no visible sign anything's wrong.
+  // Surface it as a distinct sync outcome instead.
+  if (account.credentialsCorrupted) {
+    store.markSynced(account.id, 'credentials_corrupted');
+    throw Object.assign(new Error("This account's stored credentials couldn't be decrypted (the encryption key file may have changed). Re-enter its credentials to resume real syncing."), { status: 409 });
+  }
 
   // Pull 200 days back so the 90-day range still has a full previous-90-day
   // window to compare against — otherwise "vs previous period" breaks at
@@ -235,6 +270,7 @@ app.get('/api/clients/:clientId/rules', (req, res) => {
 app.post('/api/clients/:clientId/rules', (req, res) => {
   const { name, metric, operator, value, action } = req.body;
   if (!metric || !operator || value === undefined) return res.status(400).json({ error: 'metric, operator, and value required' });
+  if (!store.getClientById(req.params.clientId)) return res.status(404).json({ error: 'client not found' });
   const id = store.addRule(req.params.clientId, { name, metric, operator, value, action });
   res.json({ id });
 });
