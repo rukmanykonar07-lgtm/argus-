@@ -1,13 +1,14 @@
-<!-- ARGUS_BUILD_MARKER: v9 — one-view consolidation, radar fix, spacing scale, taste-skill audit. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
+<!-- ARGUS_BUILD_MARKER: v11 — dark/light mode toggle, entrance stagger animation, hero-spend count-up, reduced-motion support. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#f5f5f7">
 <title>ARGUS Pulse — Agency Ad Command Center</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   /* ============================================================
      ARGUS PULSE — "The Watch", in daylight
@@ -73,15 +74,68 @@
     --sp-12: 48px;
     --sp-16: 64px;
 
-    --display: 'Fraunces', serif;
+    /* Space Grotesk for display — a modern geometric grotesque with real
+       character (not a system-default sans), reads as sleek/technical
+       rather than editorial. Inter for body/UI — the highest-legibility
+       choice at small sizes for a data-dense screen. Plex Mono stays for
+       every number and data label: tabular figures are a measurement,
+       not a costume, so monospace earns its place here. */
+    --display: 'Space Grotesk', sans-serif;
     --mono: 'IBM Plex Mono', monospace;
-    --body: 'IBM Plex Sans', sans-serif;
+    --body: 'Inter', sans-serif;
   }
 
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; -webkit-font-smoothing: antialiased; }
+  /* Dark mode — real color values tuned for dark, not an inverted filter.
+     Brass desaturates slightly and lightens (it needs to glow on black,
+     not shout the way it does on white). Status colors (sage/rust)
+     lighten for the same contrast reason. Shadows go near-invisible and
+     borders do the separation work instead, since dark shadows on dark
+     backgrounds barely register. */
+  [data-theme="dark"] {
+    --bg: #131217;
+    --panel: #1c1a22;
+    --panel-2: #201e27;
+    --panel-3: #26232c;
+    --line: #34313c;
+    --line-soft: #2a2830;
+
+    --ink: #f0eef4;
+    --ink-dim: #a49eb0;
+    --ink-faint: #6e6879;
+
+    --brass: #d4a34f;
+    --brass-bright: #e0b566;
+    --brass-tint: #2e2517;
+
+    --sage: #6bb98a;
+    --sage-tint: #1a2b21;
+    --rust: #d3785f;
+    --rust-tint: #2e1e1a;
+
+    --meta: #7ea3d6;
+    --google: #d4b356;
+    --tiktok: #d081a0;
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.2), 0 1px 6px rgba(0,0,0,0.15);
+    --shadow: 0 2px 4px rgba(0,0,0,0.25), 0 10px 24px rgba(0,0,0,0.3);
+    --shadow-brass: 0 8px 24px rgba(212,163,79,0.18);
+  }
+  [data-theme="dark"] .panel-block,
+  [data-theme="dark"] .kpi-card,
+  [data-theme="dark"] .portfolio-card { border-color: var(--line); }
+  [data-theme="dark"] img, [data-theme="dark"] canvas { filter: brightness(0.92); }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 14px; -webkit-font-smoothing: antialiased; transition: background 0.25s ease, color 0.25s ease; }
   ::selection { background: var(--brass-tint); color: var(--brass); }
   :focus-visible { outline: 2px solid var(--brass); outline-offset: 2px; border-radius: 3px; }
+  /* Scrollbar theming — the part of the page you didn't draw still
+     carries the design; an unstyled OS-default scrollbar is the
+     cheapest tell that a page was assembled, not built. */
+  ::-webkit-scrollbar { width: 10px; height: 10px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--line); border-radius: 6px; border: 2px solid var(--bg); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--ink-faint); }
 
   .app { display: flex; min-height: 100vh; }
 
@@ -105,6 +159,10 @@
   .ci-count { font-family: var(--mono); font-size: 9.5px; color: var(--ink-faint); flex-shrink: 0; }
   .sidebar-foot { padding: var(--sp-4); border-top: 1px solid var(--line); }
   .add-client-btn { width: 100%; background: var(--brass-tint); color: var(--brass); border: 1px solid transparent; font-family: var(--mono); font-weight: 500; font-size: 12px; letter-spacing: 0.02em; padding: var(--sp-3); border-radius: 8px; cursor: pointer; transition: background 0.15s; }
+  .theme-toggle { width: 100%; margin-top: var(--sp-2); background: transparent; border: 1px solid var(--line); color: var(--ink-dim); padding: var(--sp-2); border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: border-color 0.15s, color 0.15s, transform 0.4s; }
+  .theme-toggle:hover { color: var(--brass); border-color: var(--brass); }
+  .theme-toggle svg { transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); }
+  .theme-toggle:active svg { transform: rotate(35deg); }
   .add-client-btn:hover { background: #f5e6c8; }
 
   /* ---------- Layout ----------
@@ -125,7 +183,8 @@
   .portfolio-section-label { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.08em; margin: var(--sp-6) 0 var(--sp-3); display: flex; align-items: center; gap: var(--sp-2); }
   .portfolio-section-label::before { content: ''; width: 5px; height: 5px; border-radius: 50%; border: 1px solid var(--ink-faint); flex-shrink: 0; }
   .portfolio-section-label:first-of-type { margin-top: 0; }
-  .pc-status { font-family: var(--mono); font-size: 10.5px; margin-bottom: 13px; }
+  .pc-status { font-family: var(--mono); font-size: 10.5px; margin-bottom: 13px; display: flex; align-items: center; gap: var(--sp-1); }
+  .pc-status svg { flex-shrink: 0; }
   .pc-status.concern { color: var(--rust); }
   .pc-status.perfect { color: var(--sage); }
   .pc-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
@@ -148,7 +207,8 @@
   .client-title { font-family: var(--display); font-size: 25px; font-weight: 600; letter-spacing: -0.01em; }
   .client-title-meta { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); margin-top: var(--sp-1); }
   .top-actions { display: flex; gap: var(--sp-2); align-items: center; }
-  .sync-btn, .manage-btn { font-family: var(--mono); font-size: 11px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-dim); padding: var(--sp-2) var(--sp-4); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, color 0.15s, transform 0.1s; }
+  .sync-btn, .manage-btn { font-family: var(--mono); font-size: 11px; background: var(--panel); border: 1px solid var(--line); color: var(--ink-dim); padding: var(--sp-2) var(--sp-4); border-radius: 8px; cursor: pointer; transition: border-color 0.15s, color 0.15s, transform 0.1s; display: inline-flex; align-items: center; gap: var(--sp-1); }
+  .sync-btn svg, .manage-btn svg { flex-shrink: 0; }
   .sync-btn:hover, .manage-btn:hover { border-color: var(--brass); color: var(--brass); }
   .sync-btn:active, .manage-btn:active { transform: scale(0.97); }
   .controls-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-5); flex-wrap: wrap; gap: var(--sp-3); }
@@ -199,7 +259,11 @@
   .sparkline { display: block; }
 
   .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: var(--sp-4); margin-bottom: var(--sp-6); }
-  .panel-block { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: var(--sp-5); box-shadow: var(--shadow-sm); }
+  /* Shadow carries the "raised surface" read on its own — border on top
+     of it is the generic border+shadow+white card formula, the same one
+     already dropped from .kpi-card. Dropped here too for consistency. */
+  .panel-block { background: var(--panel); border: 1px solid transparent; border-radius: 14px; padding: var(--sp-5); box-shadow: var(--shadow-sm); transition: box-shadow 0.15s; }
+  .panel-block:hover { box-shadow: var(--shadow); }
   .panel-title-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-4); }
   .panel-title { font-family: var(--mono); font-size: 10.5px; font-weight: 500; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.06em; }
   .chart-toggle { display: flex; gap: var(--sp-1); }
@@ -327,6 +391,27 @@
   @keyframes watch-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   @keyframes watch-spin { to { transform: rotate(360deg); } }
 
+  /* Entrance stagger — cards settle in on render instead of popping in
+     all at once. Real motion, not decoration: it reinforces reading
+     order (top-left first) on a data-dense screen. Reduced-motion users
+     get the end state instantly, no exception-handling needed elsewhere
+     since opacity/transform just resolve to their final values. */
+  @keyframes card-enter { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .kpi-card, .panel-block, .portfolio-card {
+    animation: card-enter 0.32s cubic-bezier(0.16, 1, 0.3, 1) backwards;
+  }
+  .kpi-card:nth-child(1), .portfolio-card:nth-child(1) { animation-delay: 0.02s; }
+  .kpi-card:nth-child(2), .portfolio-card:nth-child(2) { animation-delay: 0.06s; }
+  .kpi-card:nth-child(3), .portfolio-card:nth-child(3) { animation-delay: 0.1s; }
+  .kpi-card:nth-child(4), .portfolio-card:nth-child(4) { animation-delay: 0.14s; }
+  .kpi-card:nth-child(5), .portfolio-card:nth-child(5) { animation-delay: 0.18s; }
+  .kpi-card:nth-child(n+6), .portfolio-card:nth-child(n+6) { animation-delay: 0.2s; }
+  .panel-block { animation-delay: 0.08s; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.001s !important; animation-delay: 0s !important; transition-duration: 0.001s !important; scroll-behavior: auto !important; }
+  }
+
   @media (max-width: 720px) {
     .sidebar { position: static; height: auto; width: 100%; }
     .app { flex-direction: column; }
@@ -363,6 +448,7 @@
     </div>
     <div class="sidebar-foot">
       <button class="add-client-btn" onclick="openClientModal()">+ Add Client</button>
+      <button class="theme-toggle" id="theme-toggle-btn" onclick="toggleTheme(event)" aria-label="Toggle dark mode"></button>
       <div id="user-footer" style="margin-top:10px;font-family:var(--mono);font-size:10.5px;color:var(--ink-faint);display:flex;justify-content:space-between;align-items:center;"></div>
     </div>
   </div>
@@ -485,6 +571,39 @@
 </div>
 
 <script>
+  // Tiny inline icon set — one consistent stroke weight (1.6px, round caps),
+  // currentColor so each spot tints via CSS. Replaces the unicode glyphs
+  // (⚠ ✓ ↻ ✕) that were standing in for a real icon system.
+  const ICON = {
+    check: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>',
+    warning: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 2 20h20L12 3z"/><line x1="12" y1="9" x2="12" y2="14"/><circle cx="12" cy="17.3" r="0.6" fill="currentColor" stroke="none"/></svg>',
+    refresh: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>',
+    close: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
+    sun: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/><line x1="4.2" y1="4.2" x2="5.9" y2="5.9"/><line x1="18.1" y1="18.1" x2="19.8" y2="19.8"/><line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.9" y2="18.1"/><line x1="18.1" y1="5.9" x2="19.8" y2="4.2"/></svg>',
+    moon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>'
+  };
+
+  // Theme: persisted choice wins; otherwise follow the OS preference so a
+  // first-time visitor isn't forced into light mode against their system.
+  function applyTheme(mode) {
+    document.documentElement.setAttribute('data-theme', mode);
+    const btn = document.getElementById('theme-toggle-btn');
+    if (btn) btn.innerHTML = mode === 'dark' ? ICON.sun : ICON.moon;
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute('content', mode === 'dark' ? '#131217' : '#f5f5f7');
+  }
+  function toggleTheme(e) {
+    if (e) e.stopPropagation();
+    const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+    localStorage.setItem('argus-theme', next);
+    applyTheme(next);
+  }
+  (function initTheme() {
+    const saved = localStorage.getItem('argus-theme');
+    const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(saved || (systemDark ? 'dark' : 'light'));
+  })();
+
   let clients = [];
   let activeClientId = null;
   let trendChart = null, donutChart = null, radarChart = null;
@@ -503,6 +622,25 @@
     if (abs >= 1e5) return '₹' + (n / 1e5).toFixed(2) + 'L';
     if (abs >= 1e3) return '₹' + (n / 1e3).toFixed(1) + 'K';
     return '₹' + Math.round(n).toLocaleString('en-IN');
+  }
+  // Count-up for the hero spend figure only — the number everyone reads
+  // first. Interpolates the raw value through the real formatter each
+  // frame, so it never shows a malformed intermediate. Skips entirely
+  // under reduced-motion.
+  function animateCountUp(el, targetValue) {
+    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      el.textContent = fmtMoney(targetValue);
+      return;
+    }
+    const duration = 700;
+    const start = performance.now();
+    function frame(now) {
+      const p = Math.min(1, (now - start) / duration);
+      const eased = 1 - Math.pow(1 - p, 3);
+      el.textContent = fmtMoney(targetValue * eased);
+      if (p < 1) requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
   }
   function fmtNum(n) {
     if (n === null || n === undefined) return '—';
@@ -580,8 +718,8 @@
     function portfolioCard(c) {
       const sev = c.brandInsight.severity;
       const statusLine = c.concernCount > 0
-        ? `<div class="pc-status concern">⚠ ${c.concernCount} item${c.concernCount === 1 ? '' : 's'} need${c.concernCount === 1 ? 's' : ''} attention</div>`
-        : `<div class="pc-status perfect">✓ Everything running clean</div>`;
+        ? `<div class="pc-status concern">${ICON.warning} ${c.concernCount} item${c.concernCount === 1 ? '' : 's'} need${c.concernCount === 1 ? 's' : ''} attention</div>`
+        : `<div class="pc-status perfect">${ICON.check} Everything running clean</div>`;
       return `
         <div class="portfolio-card sev-${sev}" onclick="selectClient(${c.id})">
           <div class="pc-top"><div class="pc-name">${escapeHtml(c.name)}</div><span class="mode-badge ${c.is_live ? 'live' : 'demo'}">${c.is_live ? 'Live' : 'Demo'}</span></div>
@@ -650,7 +788,7 @@
           <button class="manage-btn" onclick="openGoalsModal(${client.id})">Goals</button>
           <button class="manage-btn" onclick="openRulesModal(${client.id})">Rules</button>
           <button class="manage-btn" onclick="openAccountModal(${client.id})">+ Ad Account</button>
-          <button class="sync-btn" onclick="syncAllAccounts(${client.id})">↻ Sync All</button>
+          <button class="sync-btn" onclick="syncAllAccounts(${client.id})">${ICON.refresh} Sync All</button>
         </div>
       </div>
       <div class="controls-row">
@@ -753,7 +891,7 @@
             <div class="panel-title-row"><div class="panel-title">Setup Audit — configuration &amp; tracking issues</div></div>
             ${auditItems.map(item => `
               <div class="checklist-row">
-                <div class="checklist-mark">✕</div>
+                <div class="checklist-mark">${ICON.close}</div>
                 <div>
                   <div class="checklist-path">Campaign · ${escapeHtml(item.campaign)}</div>
                   <div class="checklist-title">${escapeHtml(item.title)}</div>
@@ -1007,7 +1145,7 @@
     document.getElementById('kpi-groups').innerHTML = `
       <div class="hero-kpi" style="margin-bottom:14px;">
         <div class="hero-kpi-label">Total Spend — this period</div>
-        <div class="hero-kpi-value">${fmtMoney(t.spend)}</div>
+        <div class="hero-kpi-value" id="hero-spend-value">${fmtMoney(0)}</div>
         <div class="hero-kpi-delta">${d.spend !== null ? (d.spend >= 0 ? '▲' : '▼') + ' ' + Math.abs(d.spend).toFixed(1) + '% vs previous period' : 'No previous period to compare yet'}</div>
       </div>
     ` + groups.map(g => `
@@ -1024,9 +1162,9 @@
         </div>
       </div>
     `).join('');
+    animateCountUp(document.getElementById('hero-spend-value'), t.spend);
   }
 
-  const SEVERITY_ICON2 = { concern: '⚠', good: '✓', neutral: 'ℹ', perfect: '✓', unknown: '•' };
 
   function renderInsightCard(insight) {
     const el = document.getElementById('brand-insight');
