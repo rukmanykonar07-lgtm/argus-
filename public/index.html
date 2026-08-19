@@ -1,4 +1,4 @@
-<!-- ARGUS_BUILD_MARKER: v11 — dark/light mode toggle, entrance stagger animation, hero-spend count-up, reduced-motion support. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
+<!-- ARGUS_BUILD_MARKER: v13 — bullet chart scale fixed to be dynamic (was hard-clamped 0-100, silently hid overpacing severity above 100%), verified against real synced mock data end-to-end, not just syntax-checked. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -313,10 +313,10 @@
   /* ---------- Forecast rings (pulled from the Haven Diagnostics
      reference) — three checkpoints of the same pacing math, side by
      side, instead of one bar. Hand-rolled SVG, no chart library. */
-  .forecast-rings { display: flex; gap: var(--sp-5); justify-content: space-around; padding: var(--sp-2) 0; }
-  .forecast-ring-item { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
-  .forecast-ring-label { font-family: var(--mono); font-size: 9px; color: var(--ink-faint); text-transform: uppercase; letter-spacing: 0.04em; text-align: center; }
-  .forecast-ring-pct { font-family: var(--display); font-size: 15px; font-weight: 700; }
+  .pacing-bullet { padding: 4px 0 var(--sp-2); }
+  .pacing-bullet-legend { display: flex; flex-wrap: wrap; gap: var(--sp-4); margin-top: var(--sp-3); font-family: var(--mono); font-size: 10.5px; color: var(--ink-dim); }
+  .pacing-bullet-legend > div { display: flex; align-items: center; gap: 6px; }
+  .pacing-swatch { width: 9px; height: 9px; border-radius: 2px; display: inline-block; flex-shrink: 0; }
 
   /* ---------- Tree rows ---------- */
   .tree-row { cursor: default; }
@@ -387,6 +387,7 @@
   .btn-save:hover { background: var(--brass-bright); }
   .syncing-overlay { text-align: center; padding: var(--sp-16) 0; font-family: var(--mono); color: var(--brass); font-size: 12px; }
   .syncing-overlay::before { content: ''; display: block; width: 20px; height: 20px; margin: 0 auto var(--sp-4); border-radius: 50%; border: 2px solid var(--brass-tint); border-top-color: var(--brass); animation: watch-spin 0.8s linear infinite; }
+  .chart-empty-msg { font-family: var(--mono); font-size: 11px; color: var(--ink-faint); text-align: center; padding: var(--sp-10) var(--sp-5); line-height: 1.5; }
 
   @keyframes watch-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   @keyframes watch-spin { to { transform: rotate(360deg); } }
@@ -417,7 +418,6 @@
     .app { flex-direction: column; }
     .main { padding: var(--sp-5); }
     .analytics-grid { grid-template-columns: 1fr; }
-    .forecast-rings { flex-wrap: wrap; }
   }
 
   /* ---------- Print / "Export Report" ---------- */
@@ -1324,11 +1324,38 @@
 
   function setTrendPair(pair) { trendMetricPair = pair; renderClientDetail(window._client, window._summary); }
 
+  // Shared empty-state guard for chart canvases — the layout research is
+  // specific that a blank/broken canvas is worse than no chart at all;
+  // a brand-new client with nothing synced yet should see an explanation,
+  // not empty axes.
+  function setChartEmptyState(canvasId, show, message) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    canvas.style.display = show ? 'none' : '';
+    let msgEl = canvas.parentElement.querySelector('.chart-empty-msg');
+    if (show) {
+      if (!msgEl) {
+        msgEl = document.createElement('div');
+        msgEl.className = 'chart-empty-msg';
+        canvas.parentElement.insertBefore(msgEl, canvas.nextSibling);
+      }
+      msgEl.textContent = message;
+    } else if (msgEl) {
+      msgEl.remove();
+    }
+  }
+
   function renderTrendChart() {
     const ts = window._summary.timeseries;
     const client = window._client;
     const ctx = document.getElementById('trend-chart');
     if (trendChart) trendChart.destroy();
+
+    if (!ts || !ts.length) {
+      setChartEmptyState('trend-chart', true, 'No synced data yet for this period — sync this client\'s ad accounts to see the trend.');
+      return;
+    }
+    setChartEmptyState('trend-chart', false);
 
     let pairs, extraDatasets = [], tooltipFmt = fmtNum;
     if (trendMetricPair === 'spend_revenue') {
@@ -1439,6 +1466,13 @@
     const d = window._summary.deltas;
     const ctx = document.getElementById('radar-chart');
     if (radarChart) radarChart.destroy();
+
+    const hasComparison = d && (d.ctr !== null || d.roas !== null || d.cpa !== null || d.conversions !== null);
+    if (!hasComparison) {
+      setChartEmptyState('radar-chart', true, 'No previous period yet to compare against — this fills in once there\'s a prior period with data.');
+      return;
+    }
+    setChartEmptyState('radar-chart', false);
     // pctChange-style deltas are already period-over-period % — convert
     // to the radar's 50=flat scale. CPA is inverted (lower is better) so
     // "improving" always means "bulging outward" on every axis alike.
@@ -1556,21 +1590,37 @@
   // Renders the pacing bar + status line for the Goals & Pacing panel.
   // Hand-rolled SVG ring, no chart library — stroke-dasharray trick for
   // a circular progress indicator. Small enough to inline three of them.
-  function forecastRingSvg(pct, color) {
-    const clamped = Math.max(0, Math.min(100, pct));
-    const r = 24, circ = 2 * Math.PI * r;
-    const offset = circ * (1 - clamped / 100);
-    return `<svg width="60" height="60" viewBox="0 0 60 60">
-      <circle cx="30" cy="30" r="${r}" fill="none" stroke="var(--panel-3)" stroke-width="6"/>
-      <circle cx="30" cy="30" r="${r}" fill="none" stroke="${color}" stroke-width="6"
-        stroke-dasharray="${circ}" stroke-dashoffset="${offset}" stroke-linecap="round"
-        transform="rotate(-90 30 30)" style="transition:stroke-dashoffset 0.4s;"/>
+  // Bullet chart, not three separate gauges. Research reason, not taste:
+  // multiple circular gauges make comparison awkward and their curved
+  // scale can't show an exact number at a glance — a bullet chart shows
+  // spend-to-date, the target-pace zone, and the projection all in one
+  // horizontal bar, which is the documented-better shape for "actual vs
+  // target" data specifically. One bar replaces three rings.
+  //
+  // Scale is dynamic, not a hard 0-100 clamp — caught this against real
+  // synced data during testing: a client running at 261% of budget (a
+  // real, non-rare state — overpacing is one of the three statuses this
+  // exact chart exists to show) would render as a bar that's "full" and
+  // visually identical to a client sitting at exactly 100%, silently
+  // hiding the severity a bullet chart is specifically supposed to make
+  // visible. The scale now extends to whichever is larger — 100, actual
+  // spend, or the projection — so a badly overpacing client visibly
+  // shows a short target zone against a long actual bar, not a lie.
+  function bulletChartSvg(pctUsed, pctElapsed, pctProjected, color) {
+    const w = 100, h = 14;
+    const scaleMax = Math.max(100, pctUsed, pctProjected) * 1.05;
+    const toX = (v) => Math.max(0, Math.min(w, (v / scaleMax) * w));
+    const usedW = toX(pctUsed);
+    const elapsedX = toX(pctElapsed);
+    const projectedX = toX(pctProjected);
+    return `<svg width="100%" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" style="overflow:visible;">
+      <rect x="0" y="0" width="${w}" height="${h}" rx="3" fill="var(--panel-3)"/>
+      <rect x="0" y="0" width="${usedW}" height="${h}" rx="3" fill="${color}"/>
+      <line x1="${elapsedX}" y1="-3" x2="${elapsedX}" y2="${h + 3}" stroke="var(--ink)" stroke-width="1.6"/>
+      <circle cx="${projectedX}" cy="${h / 2}" r="2.6" fill="none" stroke="${color}" stroke-width="1.4" style="vector-effect:non-scaling-stroke;"/>
     </svg>`;
   }
 
-  // Three checkpoints of the same pacing math side by side (pulled from
-  // the Haven Diagnostics reference) instead of one bar — budget used,
-  // month elapsed, and where spend is headed if the current rate holds.
   function renderPacing(p) {
     const paceColor = p.status === 'overpacing' ? 'var(--rust)' : p.status === 'underpacing' ? 'var(--google)' : 'var(--sage)';
     const label = p.status === 'overpacing' ? 'Overpacing' : p.status === 'underpacing' ? 'Underpacing' : 'On track';
@@ -1579,22 +1629,13 @@
       <div style="font-family:var(--mono);font-size:11px;color:var(--ink-dim);margin-bottom:12px;">
         Day ${p.dayOfMonth} of ${p.daysInMonth} · ${fmtMoney(p.spendMTD)} of ${fmtMoney(p.monthlyBudget)} spent · <span style="color:${paceColor};font-weight:600;">${label}</span>
       </div>
-      <div class="forecast-rings">
-        <div class="forecast-ring-item">
-          ${forecastRingSvg(p.pctOfBudgetUsed, 'var(--brass)')}
-          <div class="forecast-ring-pct">${p.pctOfBudgetUsed.toFixed(0)}%</div>
-          <div class="forecast-ring-label">Budget used</div>
-        </div>
-        <div class="forecast-ring-item">
-          ${forecastRingSvg(p.pctOfMonthElapsed, 'var(--ink-faint)')}
-          <div class="forecast-ring-pct">${p.pctOfMonthElapsed.toFixed(0)}%</div>
-          <div class="forecast-ring-label">Month elapsed</div>
-        </div>
-        <div class="forecast-ring-item">
-          ${forecastRingSvg(projectedPct, paceColor)}
-          <div class="forecast-ring-pct" style="color:${paceColor};">${projectedPct.toFixed(0)}%</div>
-          <div class="forecast-ring-label">Projected month-end</div>
-        </div>
+      <div class="pacing-bullet">
+        ${bulletChartSvg(p.pctOfBudgetUsed, p.pctOfMonthElapsed, projectedPct, paceColor)}
+      </div>
+      <div class="pacing-bullet-legend">
+        <div><span class="pacing-swatch" style="background:${paceColor};"></span>Spent: ${p.pctOfBudgetUsed.toFixed(0)}%</div>
+        <div><span class="pacing-swatch" style="background:var(--ink);width:2px;height:11px;border-radius:0;"></span>Month elapsed: ${p.pctOfMonthElapsed.toFixed(0)}%</div>
+        <div><span class="pacing-swatch" style="border:1.5px solid ${paceColor};background:transparent;"></span>Projected: <b style="color:${paceColor};">${projectedPct.toFixed(0)}%</b></div>
       </div>
     `;
   }
