@@ -1,4 +1,4 @@
-<!-- ARGUS_BUILD_MARKER: v13 — bullet chart scale fixed to be dynamic (was hard-clamped 0-100, silently hid overpacing severity above 100%), verified against real synced mock data end-to-end, not just syntax-checked. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
+<!-- ARGUS_BUILD_MARKER: v14 — collapsible sidebar, merged duplicated issue sections (deleted redundant preview, moved full list up), hero banner de-decorated (color moved from background to the number itself), fixed a real dark-mode bug where 4 chart functions + platform-color dots were hardcoded to light-mode hex values and never re-rendered on theme toggle. Verified end-to-end against real synced data. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -53,10 +53,6 @@
 
     --shadow-sm: 0 1px 2px rgba(30,27,38,0.04), 0 1px 6px rgba(30,27,38,0.05);
     --shadow: 0 2px 4px rgba(30,27,38,0.04), 0 10px 24px rgba(30,27,38,0.07);
-    /* Tinted shadow for the one saturated surface (hero card) — a plain
-       black shadow under a brass gradient looks muddy; a warm-tinted one
-       reads as light actually falling on that color. */
-    --shadow-brass: 0 8px 24px rgba(169,123,40,0.22);
 
     /* Spacing scale — everything in this file used to be arbitrary
        (7px, 9px, 11px, 13px, 15px, 17px, 19px... a different odd number
@@ -118,7 +114,6 @@
 
     --shadow-sm: 0 1px 2px rgba(0,0,0,0.2), 0 1px 6px rgba(0,0,0,0.15);
     --shadow: 0 2px 4px rgba(0,0,0,0.25), 0 10px 24px rgba(0,0,0,0.3);
-    --shadow-brass: 0 8px 24px rgba(212,163,79,0.18);
   }
   [data-theme="dark"] .panel-block,
   [data-theme="dark"] .kpi-card,
@@ -140,8 +135,28 @@
   .app { display: flex; min-height: 100vh; }
 
   /* ---------- Sidebar ---------- */
-  .sidebar { width: 264px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; }
-  .sidebar-head { padding: var(--sp-6) var(--sp-5) var(--sp-4); border-bottom: 1px solid var(--line); cursor: pointer; }
+  .sidebar { width: 264px; flex-shrink: 0; background: var(--panel); border-right: 1px solid var(--line); display: flex; flex-direction: column; height: 100vh; position: sticky; top: 0; transition: width 0.2s ease; }
+  /* Collapsed rail — 64px, icons/dots only, name shows as a title-attr
+     tooltip. Research spec was a 256+64px pair; ARGUS sits at 264, close
+     enough that only the collapsed width needed picking to match the
+     pattern (64px is the named number across every source). */
+  .sidebar.collapsed { width: 64px; }
+  .sidebar.collapsed .brand-sub,
+  .sidebar.collapsed .brand span,
+  .sidebar.collapsed .client-nav-label,
+  .sidebar.collapsed .ci-name,
+  .sidebar.collapsed .ci-count,
+  .sidebar.collapsed .add-client-btn span,
+  .sidebar.collapsed #user-footer { display: none; }
+  .sidebar.collapsed .sidebar-head { padding: var(--sp-6) var(--sp-3) var(--sp-4); }
+  .sidebar.collapsed .client-item { justify-content: center; padding: var(--sp-2); }
+  .sidebar.collapsed .ci-left { justify-content: center; }
+  .sidebar.collapsed .client-item .dot { margin-right: 0; width: 8px; height: 8px; }
+  .sidebar.collapsed .add-client-btn { padding: var(--sp-3) 0; }
+  .sidebar-collapse-btn { position: absolute; top: 22px; right: -11px; width: 22px; height: 22px; border-radius: 50%; background: var(--panel); border: 1px solid var(--line); color: var(--ink-faint); display: flex; align-items: center; justify-content: center; cursor: pointer; transition: color 0.15s, border-color 0.15s, transform 0.2s; z-index: 2; }
+  .sidebar-collapse-btn:hover { color: var(--brass); border-color: var(--brass); }
+  .sidebar.collapsed .sidebar-collapse-btn svg { transform: rotate(180deg); }
+  .sidebar-head { padding: var(--sp-6) var(--sp-5) var(--sp-4); border-bottom: 1px solid var(--line); cursor: pointer; position: relative; }
   .brand { font-family: var(--display); font-weight: 700; font-size: 18px; letter-spacing: -0.01em; display: flex; align-items: center; gap: var(--sp-2); }
   .brand-mark { width: 15px; height: 15px; border-radius: 50%; border: 2px solid var(--brass); position: relative; flex-shrink: 0; }
   .brand-mark::after { content: ''; position: absolute; inset: 3px; border-radius: 50%; background: var(--brass); }
@@ -228,17 +243,21 @@
   .account-pill .never { color: var(--rust); }
   .sis-badge { font-family: var(--mono); font-size: 9px; color: var(--google); background: rgba(163,132,31,0.1); border: 1px solid rgba(163,132,31,0.25); border-radius: 4px; padding: 1px var(--sp-2); margin-left: var(--sp-2); }
 
-  /* ---------- Hero KPI (pulled from the Analytics reference) ----------
-     One bold color-block card for the single most important number,
-     asymmetric against the smaller cards next to it — not another
-     uniform grid tile. Used for the top-line spend figure. Tinted
-     shadow (--shadow-brass) instead of plain black, per the "colored
-     shadows carry the surface's hue" note — a black shadow under a
-     saturated gradient reads muddy. */
-  .hero-kpi { background: linear-gradient(135deg, var(--brass) 0%, var(--brass-bright) 100%); border-radius: 16px; padding: var(--sp-5) var(--sp-6); color: #fff; box-shadow: var(--shadow-brass); }
-  .hero-kpi-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.85; margin-bottom: var(--sp-2); }
-  .hero-kpi-value { font-family: var(--display); font-size: 31px; font-weight: 700; font-variant-numeric: tabular-nums; }
-  .hero-kpi-delta { font-family: var(--mono); font-size: 11px; opacity: 0.9; margin-top: var(--sp-2); }
+  /* ---------- Hero KPI ---------- */
+  /* Was a full brass gradient fill with a glowing shadow — the loudest,
+     most decorative element on the page. That's a direct conflict with
+     two things already established: the design-psychology research
+     ("restraint over decoration... gold works only as an accent, never
+     primary/base fill... overuse feels ostentatious") and the eye-
+     tracking research ("numbers dominate attention, not decoration").
+     Fix moves the color role from the background onto the number itself —
+     the figure is what should pop, not the card it sits in. A thin
+     left-edge accent keeps the "this is the one that matters" signal
+     without a full-bleed fill. */
+  .hero-kpi { background: var(--panel); border: 1px solid var(--line); border-left: 3px solid var(--brass); border-radius: 14px; padding: var(--sp-5) var(--sp-6); box-shadow: var(--shadow-sm); }
+  .hero-kpi-label { font-family: var(--mono); font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--ink-faint); margin-bottom: var(--sp-2); }
+  .hero-kpi-value { font-family: var(--display); font-size: 34px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--brass); }
+  .hero-kpi-delta { font-family: var(--mono); font-size: 11px; color: var(--ink-dim); margin-top: var(--sp-2); }
 
   /* ---------- KPIs ---------- */
   .kpi-group { margin-bottom: var(--sp-5); }
@@ -415,6 +434,7 @@
 
   @media (max-width: 720px) {
     .sidebar { position: static; height: auto; width: 100%; }
+    .sidebar-collapse-btn { display: none; }
     .app { flex-direction: column; }
     .main { padding: var(--sp-5); }
     .analytics-grid { grid-template-columns: 1fr; }
@@ -437,10 +457,11 @@
 </head>
 <body>
 <div class="app">
-  <div class="sidebar">
+  <div class="sidebar" id="sidebar">
     <div class="sidebar-head" onclick="showPortfolio()">
-      <div class="brand"><span class="brand-mark"></span>ARGUS <span>PULSE</span></div>
+      <div class="brand"><span class="brand-mark"></span><span class="brand-text">ARGUS <span>PULSE</span></span></div>
       <div class="brand-sub">AD PERFORMANCE COMMAND CENTER</div>
+      <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebar(event)" aria-label="Collapse sidebar" title="Collapse sidebar"></button>
     </div>
     <div class="client-nav">
       <div class="client-nav-label">Clients</div>
@@ -580,7 +601,8 @@
     refresh: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><polyline points="21 3 21 9 15 9"/></svg>',
     close: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
     sun: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/><line x1="4.2" y1="4.2" x2="5.9" y2="5.9"/><line x1="18.1" y1="18.1" x2="19.8" y2="19.8"/><line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.9" y2="18.1"/><line x1="18.1" y1="5.9" x2="19.8" y2="4.2"/></svg>',
-    moon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>'
+    moon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>',
+    collapse: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>'
   };
 
   // Theme: persisted choice wins; otherwise follow the OS preference so a
@@ -597,11 +619,44 @@
     const next = document.documentElement.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     localStorage.setItem('argus-theme', next);
     applyTheme(next);
+    // Chart.js draws to canvas with whatever colors it was given at
+    // creation time — flipping the data-theme attribute alone doesn't
+    // touch already-rendered canvases. Re-run the three chart functions
+    // so they re-read the new theme's resolved CSS values immediately,
+    // instead of staying stuck in the old theme's colors until the next
+    // full page load. Guarded: only fires if a client's charts are
+    // actually on screen (not on the portfolio view, where the canvases
+    // don't exist).
+    if (activeClientId && window._summary) {
+      renderTrendChart();
+      renderDonutChart();
+      renderRadarChart();
+    }
   }
   (function initTheme() {
     const saved = localStorage.getItem('argus-theme');
     const systemDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     applyTheme(saved || (systemDark ? 'dark' : 'light'));
+  })();
+
+  // Collapsible sidebar rail — same persisted-preference pattern as the
+  // theme toggle. Icon points left when expanded (collapse this), flips
+  // via CSS when .collapsed is present (expand this).
+  function toggleSidebar(e) {
+    if (e) e.stopPropagation();
+    const sidebar = document.getElementById('sidebar');
+    const collapsed = sidebar.classList.toggle('collapsed');
+    localStorage.setItem('argus-sidebar-collapsed', collapsed ? '1' : '0');
+    const btn = document.getElementById('sidebar-collapse-btn');
+    if (btn) btn.setAttribute('title', collapsed ? 'Expand sidebar' : 'Collapse sidebar');
+  }
+  (function initSidebar() {
+    const btn = document.getElementById('sidebar-collapse-btn');
+    if (btn) btn.innerHTML = ICON.collapse;
+    if (localStorage.getItem('argus-sidebar-collapsed') === '1') {
+      document.getElementById('sidebar').classList.add('collapsed');
+      if (btn) btn.setAttribute('title', 'Expand sidebar');
+    }
   })();
 
   let clients = [];
@@ -613,7 +668,31 @@
   let trendMetricPair = 'spend_revenue';
   // currentView removed — was tab-switch state (overview/attention/
   // breakdown), no longer needed now that all three render as one page.
-  const PLATFORM_COLORS = { meta: '#4a6fa8', google: '#a3841f', tiktok: '#a24b6b' };
+  const PLATFORM_COLORS_FALLBACK = { meta: '#4a6fa8', google: '#a3841f', tiktok: '#a24b6b' };
+  // Reads the CURRENT resolved value of a CSS custom property — not a
+  // hardcoded snapshot. Found during this pass: PLATFORM_COLORS (and
+  // every chart color below) had been hardcoded to light-mode hex values
+  // since before dark mode existed. --meta/--google/--tiktok shift to
+  // different, lighter tones in dark mode (for contrast against a near-
+  // black background) but every canvas-drawn chart and every small
+  // platform-color dot across the app kept showing the light-mode values
+  // regardless of theme — a real, silent bug, not a hypothetical one.
+  function cssVar(name, fallback) {
+    const v = getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+    return v || fallback;
+  }
+  function platformColor(key) {
+    return cssVar(`--${key}`, PLATFORM_COLORS_FALLBACK[key] || '#888');
+  }
+  // Chart.js needs an actual rgba() string for translucent fills — CSS
+  // custom properties don't carry alpha on their own, so this parses
+  // whatever hex --brass currently resolves to (light or dark theme) and
+  // adds the alpha channel Chart.js needs.
+  function hexToRgba(hex, alpha) {
+    const h = hex.replace('#', '');
+    const r = parseInt(h.substring(0, 2), 16), g = parseInt(h.substring(2, 4), 16), b = parseInt(h.substring(4, 6), 16);
+    return `rgba(${r},${g},${b},${alpha})`;
+  }
 
   function fmtMoney(n) {
     if (n === null || n === undefined) return '—';
@@ -679,7 +758,7 @@
     const tooltip = `Over this period — low: ${formatter(min)}, high: ${formatter(max)}, latest: ${formatter(values[values.length - 1])}`;
     return `<svg class="sparkline" width="100%" height="30" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none"><title>${escapeHtml(tooltip)}</title><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
   }
-  function platDot(platform) { return `<span class="plat-dot" style="background:${PLATFORM_COLORS[platform] || '#888'}"></span>`; }
+  function platDot(platform) { return `<span class="plat-dot" style="background:${platformColor(platform)}"></span>`; }
 
   async function loadClients() {
     clients = await (await fetch('/api/clients')).json();
@@ -693,8 +772,7 @@
       return;
     }
     list.innerHTML = clients.map(c => `
-      <div class="client-item ${c.id === activeClientId ? 'active' : ''}" onclick="selectClient(${c.id})">
-        <div class="ci-left"><span class="dot ${c.status !== 'active' ? 'paused' : ''}"></span><span class="ci-name">${escapeHtml(c.name)}</span></div>
+      <div class="client-item ${c.id === activeClientId ? 'active' : ''}" onclick="selectClient(${c.id})" title="${escapeHtml(c.name)}">        <div class="ci-left"><span class="dot ${c.status !== 'active' ? 'paused' : ''}"></span><span class="ci-name">${escapeHtml(c.name)}</span></div>
         <span class="ci-count">${c.ad_accounts.length}</span>
       </div>
     `).join('');
@@ -805,8 +883,9 @@
           <div class="account-pill">${platDot(a.platform)}${escapeHtml(a.label)} · ${a.last_sync_mode === 'live' ? '<span style="color:var(--sage)">live</span>' : a.last_sync_mode === 'mock' ? '<span>demo</span>' : '<span style="color:var(--ink-faint)">unsynced</span>'} · ${a.last_synced_at ? timeAgo(a.last_synced_at) : '<span class="never">never synced</span>'}</div>
         `).join('') : '<div class="account-pill">No ad accounts connected yet</div>'}
       </div>
-      <div id="view-overview"></div>
+      <div id="view-overview-top"></div>
       <div id="view-attention"></div>
+      <div id="view-overview-bottom"></div>
       <div id="view-breakdown"></div>
       </div>
     `;
@@ -821,18 +900,24 @@
   // panel-title as a natural divider so it reads as organized sections,
   // not one long undifferentiated wall.
   function renderView() {
-    renderOverviewView();
+    renderOverviewTop();
     renderAttentionView();
+    renderOverviewBottom();
     renderBreakdownView();
   }
 
-  function renderOverviewView() {
-    const el = document.getElementById('view-overview');
+  // Split from one renderOverviewView() into top/bottom halves so the full
+  // "Needs Attention" list (renderAttentionView) can sit physically between
+  // them. Before this split, a "Top Issues Right Now" preview sat up top
+  // and the SAME data, in full, sat below three charts and a setup-audit
+  // panel — the issues story was told twice, interrupted by unrelated
+  // content in between. The preview added nothing once nothing separates
+  // it from the full list, so it's gone; the full list now does that job,
+  // positioned where research says critical status belongs (high on the
+  // page, not past the charts).
+  function renderOverviewTop() {
+    const el = document.getElementById('view-overview-top');
     const summary = window._summary, client = window._client;
-    const { attention } = collectFlatInsights(summary.campaigns);
-    const topIssues = attention.slice(0, 3);
-    const auditItems = summary.campaigns.filter(c => c.auditFindings && c.auditFindings.length)
-      .flatMap(c => c.auditFindings.map(f => ({ campaign: c.name, ...f })));
 
     el.innerHTML = `
       <div id="kpi-groups"></div>
@@ -864,26 +949,18 @@
           </div>
         </div>
       ` : ''}
-      ${topIssues.length ? `
-        <div class="insights-panel">
-          <div class="panel-block">
-            <div class="panel-title-row">
-              <div class="panel-title">Top Issues Right Now</div>
-              <div class="ctoggle-btn" onclick="document.getElementById('view-attention').scrollIntoView({behavior:'smooth',block:'start'})">View all ${attention.length} →</div>
-            </div>
-            ${topIssues.map(item => `
-              <div class="insight-card ${item.node.insight.severity}">
-                <div class="insight-icon"></div>
-                <div>
-                  <div class="attention-path">${item.level} · ${item.path.map(escapeHtml).join(' → ')}</div>
-                  <div class="insight-title">${escapeHtml(item.node.insight.title)}</div>
-                  <div class="insight-explanation">${escapeHtml(item.node.insight.explanation)}</div>
-                </div>
-              </div>
-            `).join('')}
-          </div>
-        </div>
-      ` : ''}
+    `;
+    renderKpiCards();
+    renderInsightCard(window._summary.brandInsight);
+  }
+
+  function renderOverviewBottom() {
+    const el = document.getElementById('view-overview-bottom');
+    const summary = window._summary, client = window._client;
+    const auditItems = summary.campaigns.filter(c => c.auditFindings && c.auditFindings.length)
+      .flatMap(c => c.auditFindings.map(f => ({ campaign: c.name, ...f })));
+
+    el.innerHTML = `
       ${renderRecommendedActions(summary.recommendedActions || [])}
       ${auditItems.length ? `
         <div class="insights-panel">
@@ -927,8 +1004,6 @@
         </div>
       </div>
     `;
-    renderKpiCards();
-    renderInsightCard(window._summary.brandInsight);
     renderTrendChart();
     renderDonutChart();
     renderRadarChart();
@@ -1074,7 +1149,7 @@
     const d = window._summary.deltas;
     const ts = window._summary.timeseries;
     const sv = window._summary.searchVisibilityAvg;
-    const spark = key => sparklineSvg(ts.map(r => r[key]), '#a97b28');
+    const spark = key => sparklineSvg(ts.map(r => r[key]), 'var(--brass)');
 
     const outcomesGroup = { label: 'Outcomes', cards: [
       { label: 'Spend', val: fmtMoney(t.spend), delta: d.spend, key: 'spend' },
@@ -1358,11 +1433,12 @@
     setChartEmptyState('trend-chart', false);
 
     let pairs, extraDatasets = [], tooltipFmt = fmtNum;
+    const brass = cssVar('--brass', '#a97b28'), sage = cssVar('--sage', '#3f7a58'), meta = platformColor('meta'), lineFaint = cssVar('--ink-faint', '#9b96a5');
     if (trendMetricPair === 'spend_revenue') {
-      pairs = [{ k: 'spend', label: 'Spend', color: '#a97b28' }, { k: 'revenue', label: 'Revenue', color: '#3f7a58' }];
+      pairs = [{ k: 'spend', label: 'Spend', color: brass }, { k: 'revenue', label: 'Revenue', color: sage }];
       tooltipFmt = fmtMoney;
     } else if (trendMetricPair === 'clicks_conversions') {
-      pairs = [{ k: 'clicks', label: 'Clicks', color: '#4a6fa8' }, { k: 'conversions', label: 'Conversions', color: '#a97b28' }];
+      pairs = [{ k: 'clicks', label: 'Clicks', color: meta }, { k: 'conversions', label: 'Conversions', color: brass }];
     } else {
       // "vs Goal" (pulled from the Drift reference) — actual metric plotted
       // against a flat reference line for the client's own stated target,
@@ -1372,14 +1448,15 @@
       const metricKey = useRoas ? 'roas' : 'cpa';
       const targetVal = useRoas ? client.target_roas : client.target_cpa;
       const label = useRoas ? 'ROAS' : 'CPA';
-      pairs = [{ k: metricKey, label: `Actual ${label}`, color: '#a97b28' }];
+      pairs = [{ k: metricKey, label: `Actual ${label}`, color: brass }];
       extraDatasets = [{
-        label: `Target ${label}`, data: ts.map(() => targetVal), borderColor: '#9b96a5',
+        label: `Target ${label}`, data: ts.map(() => targetVal), borderColor: lineFaint,
         borderDash: [6, 4], pointRadius: 0, fill: false, tension: 0, yAxisID: 'y',
       }];
       tooltipFmt = useRoas ? (v) => v.toFixed(2) + 'x' : fmtMoney;
     }
 
+    const gridColor = cssVar('--line-soft', '#ececee'), tickColor = cssVar('--ink-faint', '#9b96a5'), legendColor = cssVar('--ink', '#1e1b26');
     trendChart = new Chart(ctx, {
       type: 'line',
       data: {
@@ -1396,12 +1473,12 @@
       options: {
         responsive: true, interaction: { mode: 'index', intersect: false },
         scales: {
-          x: { ticks: { color: '#9b96a5', maxTicksLimit: 10 }, grid: { color: '#ececee' } },
-          y: { position: 'left', ticks: { color: '#9b96a5' }, grid: { color: '#ececee' } },
-          y1: { position: 'right', ticks: { color: '#9b96a5' }, grid: { display: false } },
+          x: { ticks: { color: tickColor, maxTicksLimit: 10 }, grid: { color: gridColor } },
+          y: { position: 'left', ticks: { color: tickColor }, grid: { color: gridColor } },
+          y1: { position: 'right', ticks: { color: tickColor }, grid: { display: false } },
         },
         plugins: {
-          legend: { labels: { color: '#1e1b26', font: { family: 'IBM Plex Sans' } } },
+          legend: { labels: { color: legendColor, font: { family: 'Inter' } } },
           tooltip: {
             callbacks: {
               label: (ctx) => `${ctx.dataset.label}: ${tooltipFmt(ctx.parsed.y)}`,
@@ -1416,7 +1493,7 @@
     const spend = window._summary.platformSpend;
     const labels = Object.keys(spend);
     const values = Object.values(spend);
-    const colors = labels.map(l => PLATFORM_COLORS[l] || '#888');
+    const colors = labels.map(l => platformColor(l));
     const ctx = document.getElementById('donut-chart');
     if (donutChart) donutChart.destroy();
     if (!labels.length) {
@@ -1425,7 +1502,7 @@
     }
     donutChart = new Chart(ctx, {
       type: 'doughnut',
-      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: '#ffffff', borderWidth: 2 }] },
+      data: { labels, datasets: [{ data: values, backgroundColor: colors, borderColor: cssVar('--panel', '#ffffff'), borderWidth: 2 }] },
       options: {
         onClick: (evt, elements) => {
           if (!elements.length) return;
@@ -1473,6 +1550,9 @@
       return;
     }
     setChartEmptyState('radar-chart', false);
+    const brassColor = cssVar('--brass', '#a97b28');
+    const brassTintColor = hexToRgba(brassColor, 0.15);
+    const gridColorR = cssVar('--line-soft', '#ececee'), labelColorR = cssVar('--ink-dim', '#6b6577'), lineFaintR = cssVar('--line', '#d8d5db');
     // pctChange-style deltas are already period-over-period % — convert
     // to the radar's 50=flat scale. CPA is inverted (lower is better) so
     // "improving" always means "bulging outward" on every axis alike.
@@ -1501,17 +1581,17 @@
         labels: axes.map(a => a.label),
         datasets: [{
           label: 'This period', data: axes.map(a => a.val),
-          borderColor: '#a97b28', backgroundColor: 'rgba(169,123,40,0.15)', pointBackgroundColor: '#a97b28',
+          borderColor: brassColor, backgroundColor: brassTintColor, pointBackgroundColor: brassColor,
         }, {
           label: 'Same as last period', data: axes.map(() => 50),
-          borderColor: '#d8d5db', borderDash: [4, 4], pointRadius: 0, backgroundColor: 'transparent',
+          borderColor: lineFaintR, borderDash: [4, 4], pointRadius: 0, backgroundColor: 'transparent',
         }],
       },
       options: {
         scales: {
           r: {
-            min: 0, max: 100, ticks: { display: false }, grid: { color: '#ececee' },
-            pointLabels: { color: '#6b6577', font: { family: 'IBM Plex Mono', size: 10 } },
+            min: 0, max: 100, ticks: { display: false }, grid: { color: gridColorR },
+            pointLabels: { color: labelColorR, font: { family: 'IBM Plex Mono', size: 10 } },
           },
         },
         plugins: {
