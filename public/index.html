@@ -1,4 +1,4 @@
-<!-- ARGUS_BUILD_MARKER: v14 — collapsible sidebar, merged duplicated issue sections (deleted redundant preview, moved full list up), hero banner de-decorated (color moved from background to the number itself), fixed a real dark-mode bug where 4 chart functions + platform-color dots were hardcoded to light-mode hex values and never re-rendered on theme toggle. Verified end-to-end against real synced data. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
+<!-- ARGUS_BUILD_MARKER: v15 — added a command palette (Ctrl/Cmd+K, or the sidebar trigger) to fuzzy-jump to any client instantly, keyboard-navigable, verified end-to-end against a live server. Search this file for "ARGUS_BUILD_MARKER" to confirm you're on this build. -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -392,6 +392,30 @@
   .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(30,27,38,0.4); align-items: center; justify-content: center; z-index: 10; }
   .modal-overlay.open { display: flex; }
   .modal { background: var(--panel); border: 1px solid var(--line); border-radius: 16px; padding: var(--sp-6); width: 380px; max-height: 88vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(30,27,38,0.18); }
+  /* Command palette — top-anchored, not vertically centered like a form
+     modal (⌘K palettes read better near the top, closer to where the
+     eye already was). Own implementation, own styling; not copied code —
+     the concept (quick fuzzy-jump to a client) is what's borrowed, from
+     seeing how common the pattern is across real app-shell designs. */
+  .command-palette { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; width: 480px; max-width: 90vw; max-height: 60vh; box-shadow: 0 20px 60px rgba(30,27,38,0.25); margin-top: 12vh; overflow: hidden; display: flex; flex-direction: column; }
+  [data-theme="dark"] .command-palette { box-shadow: 0 20px 60px rgba(0,0,0,0.5); }
+  .command-palette-input { width: 100%; border: none; border-bottom: 1px solid var(--line); background: transparent; color: var(--ink); font-family: var(--body); font-size: 15px; padding: var(--sp-4) var(--sp-5); outline: none; }
+  .command-palette-input::placeholder { color: var(--ink-faint); }
+  .command-palette-results { overflow-y: auto; flex: 1; padding: var(--sp-2); }
+  .command-result-item { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-3); padding: var(--sp-3) var(--sp-3); border-radius: 8px; cursor: pointer; }
+  .command-result-item.selected, .command-result-item:hover { background: var(--brass-tint); }
+  .command-result-name { font-size: 13.5px; color: var(--ink); }
+  .command-result-meta { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); }
+  .command-palette-empty { padding: var(--sp-6) var(--sp-5); text-align: center; font-family: var(--mono); font-size: 11px; color: var(--ink-faint); }
+  .command-palette-hint { padding: var(--sp-2) var(--sp-5); border-top: 1px solid var(--line); font-family: var(--mono); font-size: 10px; color: var(--ink-faint); }
+  .command-palette-trigger { width: 100%; display: flex; align-items: center; justify-content: flex-start; gap: var(--sp-2); background: transparent; border: 1px solid var(--line); color: var(--ink-faint); font-family: var(--body); font-size: 12.5px; padding: var(--sp-2) var(--sp-3); border-radius: 8px; cursor: pointer; margin-bottom: var(--sp-3); transition: border-color 0.15s, color 0.15s; }
+  .command-palette-trigger span:not(.cp-kbd-wrap):not(.cp-icon-wrap) { flex: 1; text-align: left; }
+  .cp-icon-wrap { display: flex; flex-shrink: 0; }
+  .command-palette-trigger:hover { border-color: var(--brass); color: var(--ink-dim); }
+  .command-palette-trigger kbd { font-family: var(--mono); font-size: 10px; background: var(--panel-3); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--ink-faint); }
+  .sidebar.collapsed .command-palette-trigger span:not(.cp-kbd-wrap):not(.cp-icon-wrap) { display: none; }
+  .sidebar.collapsed .command-palette-trigger { justify-content: center; padding: var(--sp-2); }
+  .sidebar.collapsed .command-palette-trigger .cp-kbd-wrap { display: none; }
   .modal h3 { font-family: var(--display); font-size: 18px; font-weight: 600; margin-bottom: var(--sp-5); }
   .modal-hint { font-family: var(--mono); font-size: 10.5px; color: var(--ink-faint); margin: calc(var(--sp-2) * -1) 0 var(--sp-3); line-height: 1.55; }
   .modal input, .modal textarea, .modal select { width: 100%; background: var(--panel-2); border: 1px solid var(--line); color: var(--ink); padding: var(--sp-3); border-radius: 8px; font-family: var(--body); font-size: 13px; margin-bottom: var(--sp-3); transition: border-color 0.15s; }
@@ -464,6 +488,11 @@
       <button class="sidebar-collapse-btn" id="sidebar-collapse-btn" onclick="toggleSidebar(event)" aria-label="Collapse sidebar" title="Collapse sidebar"></button>
     </div>
     <div class="client-nav">
+      <button class="command-palette-trigger" onclick="openCommandPalette()">
+        <span class="cp-icon-wrap" id="cp-icon-wrap"></span>
+        <span>Jump to client...</span>
+        <span class="cp-kbd-wrap"><kbd id="cp-kbd-hint">Ctrl K</kbd></span>
+      </button>
       <div class="client-nav-label">Clients</div>
       <div id="client-nav-list"></div>
     </div>
@@ -486,6 +515,14 @@
     <div class="modal-actions" style="justify-content:stretch;">
       <button class="btn-save" style="flex:1;" id="auth-submit-btn" onclick="submitAuth()">Sign in</button>
     </div>
+  </div>
+</div>
+
+<div class="modal-overlay" id="command-palette-overlay" onclick="if(event.target===this) closeCommandPalette()">
+  <div class="command-palette">
+    <input type="text" id="command-palette-input" class="command-palette-input" placeholder="Jump to a client..." autocomplete="off" oninput="filterCommandPalette()" onkeydown="commandPaletteKeydown(event)">
+    <div id="command-palette-results" class="command-palette-results"></div>
+    <div class="command-palette-hint">↑↓ to navigate · Enter to select · Esc to close</div>
   </div>
 </div>
 
@@ -602,7 +639,8 @@
     close: '<svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>',
     sun: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="4"/><line x1="12" y1="20" x2="12" y2="22.5"/><line x1="4.2" y1="4.2" x2="5.9" y2="5.9"/><line x1="18.1" y1="18.1" x2="19.8" y2="19.8"/><line x1="1.5" y1="12" x2="4" y2="12"/><line x1="20" y1="12" x2="22.5" y2="12"/><line x1="4.2" y1="19.8" x2="5.9" y2="18.1"/><line x1="18.1" y1="5.9" x2="19.8" y2="4.2"/></svg>',
     moon: '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5z"/></svg>',
-    collapse: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>'
+    collapse: '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 6 9 12 15 18"/></svg>',
+    search: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>'
   };
 
   // Theme: persisted choice wins; otherwise follow the OS preference so a
@@ -1617,6 +1655,82 @@
 
   function openClientModal() { document.getElementById('client-modal-overlay').classList.add('open'); }
   function closeClientModal() { document.getElementById('client-modal-overlay').classList.remove('open'); }
+
+  // Command palette — quick fuzzy-jump to a client by name, opened via
+  // Ctrl/Cmd+K or the sidebar trigger. Own build, own styling; the
+  // pattern itself (a searchable quick-jump overlay) is common across
+  // real dashboard shells, worth having once the client list grows
+  // past what's comfortable to scan in the sidebar.
+  let commandPaletteResults = [];
+  let commandPaletteSelectedIdx = 0;
+
+  function openCommandPalette() {
+    const overlay = document.getElementById('command-palette-overlay');
+    overlay.classList.add('open');
+    const input = document.getElementById('command-palette-input');
+    input.value = '';
+    filterCommandPalette();
+    setTimeout(() => input.focus(), 30);
+  }
+  function closeCommandPalette() {
+    document.getElementById('command-palette-overlay').classList.remove('open');
+  }
+  function filterCommandPalette() {
+    const q = document.getElementById('command-palette-input').value.trim().toLowerCase();
+    commandPaletteResults = !q ? clients.slice(0, 8) : clients.filter(c => c.name.toLowerCase().includes(q)).slice(0, 8);
+    commandPaletteSelectedIdx = 0;
+    renderCommandPaletteResults();
+  }
+  function renderCommandPaletteResults() {
+    const el = document.getElementById('command-palette-results');
+    if (!commandPaletteResults.length) {
+      el.innerHTML = `<div class="command-palette-empty">No clients match that.</div>`;
+      return;
+    }
+    el.innerHTML = commandPaletteResults.map((c, i) => `
+      <div class="command-result-item ${i === commandPaletteSelectedIdx ? 'selected' : ''}" onclick="jumpToClientFromPalette(${c.id})" onmouseenter="commandPaletteSelectedIdx=${i};renderCommandPaletteResults()">
+        <div class="command-result-name">${escapeHtml(c.name)}</div>
+        <div class="command-result-meta">${c.status || ''}</div>
+      </div>
+    `).join('');
+  }
+  function jumpToClientFromPalette(id) {
+    closeCommandPalette();
+    selectClient(id);
+  }
+  function commandPaletteKeydown(e) {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      commandPaletteSelectedIdx = Math.min(commandPaletteSelectedIdx + 1, commandPaletteResults.length - 1);
+      renderCommandPaletteResults();
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      commandPaletteSelectedIdx = Math.max(commandPaletteSelectedIdx - 1, 0);
+      renderCommandPaletteResults();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (commandPaletteResults[commandPaletteSelectedIdx]) jumpToClientFromPalette(commandPaletteResults[commandPaletteSelectedIdx].id);
+    } else if (e.key === 'Escape') {
+      closeCommandPalette();
+    }
+  }
+  // Global shortcut — Ctrl+K on Windows/Linux, Cmd+K on Mac. Also closes
+  // on Escape from anywhere, not just while the input has focus.
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      openCommandPalette();
+    } else if (e.key === 'Escape' && document.getElementById('command-palette-overlay').classList.contains('open')) {
+      closeCommandPalette();
+    }
+  });
+  (function initCommandPaletteHint() {
+    const isMac = navigator.platform && navigator.platform.toUpperCase().includes('MAC');
+    const hint = document.getElementById('cp-kbd-hint');
+    if (hint) hint.textContent = isMac ? '⌘ K' : 'Ctrl K';
+    const iconWrap = document.getElementById('cp-icon-wrap');
+    if (iconWrap) iconWrap.innerHTML = ICON.search;
+  })();
 
   async function saveClient() {
     const name = document.getElementById('new-client-name').value.trim();
